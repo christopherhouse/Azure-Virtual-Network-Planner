@@ -1,0 +1,92 @@
+# Conductor Continue Workflow
+# Executes next step(s) in plan, invokes specialists as needed
+
+name: conductor-continue
+description: "Execute next step in plan, coordinate specialist handoffs"
+version: 1.0.0
+
+# Workflow Configuration
+config:
+  output_folder: "{output_folder}/conductor"
+  index_file: "{output_folder}/conductor/index.md"
+  plan_file: "{output_folder}/conductor/active-task/plan.md"
+
+steps:
+  - id: load-state
+    name: "Load Current State"
+    description: |
+      Load orchestration state:
+      1. Read index.md for current TOC
+      2. Read plan.md for task list and status
+      3. Identify next pending step
+      4. Determine which specialist is needed
+    output: current_state
+
+  - id: verify-ready
+    name: "Verify Ready to Continue"
+    description: |
+      Check if ready to proceed:
+      - Previous step completed?
+      - Dependencies satisfied?
+      - Any blockers noted?
+
+      If blocked, surface issue to user.
+    output: ready_status
+
+  - id: prepare-handoff
+    name: "Prepare Specialist Context"
+    description: |
+      Prepare context for specialist:
+      1. Extract relevant task details from plan
+      2. Include any previous specialist outputs
+      3. Define expected deliverable
+      4. Set clear completion criteria
+    output: specialist_context
+
+  - id: invoke-specialist
+    name: "Invoke Specialist Agent"
+    description: |
+      Switch to appropriate specialist:
+      - Stratus: bmad:azure:agents:azure-infrastructure
+      - Nexus: bmad:azure:agents:agent-framework-sdk
+      - Prism: bmad:azure:agents:fabric
+      - Forge: bmad:azure:agents:ai-foundry
+
+      Pass context and wait for completion.
+    output: specialist_result
+
+  - id: record-result
+    name: "Record Specialist Work"
+    description: |
+      After specialist returns:
+      1. Create/update {specialist}-record.md
+      2. Update index.md with new file
+      3. Update plan.md step status to complete
+      4. Note any outputs or artifacts created
+    output: result_recorded
+
+  - id: update-index
+    name: "Update Index TOC"
+    description: |
+      Update index.md:
+      - Mark completed step
+      - Add specialist record file
+      - Update timestamps
+
+      Format: path | status | agent
+    output: index_updated
+
+  - id: check-next
+    name: "Check Next Action"
+    description: |
+      Determine next action:
+      - More steps pending? → Present next step
+      - All complete? → Suggest *complete
+      - Blocker found? → Surface to user
+
+      Ask user to continue or pause.
+    output: next_action
+
+completion:
+  message: "Step completed. Run *continue for next step, *status to review, or *complete if done."
+  next_action: "*continue or *complete"

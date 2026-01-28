@@ -1,0 +1,92 @@
+# Conductor Start Workflow
+# Takes user goal, decomposes into plan, creates folder structure
+
+name: conductor-start
+description: "Decompose user goal into actionable workflow plan"
+version: 1.0.0
+
+# Workflow Configuration
+config:
+  output_folder: "{output_folder}/conductor"
+  index_file: "{output_folder}/conductor/index.md"
+  plan_file: "{output_folder}/conductor/active-task/plan.md"
+
+steps:
+  - id: understand-goal
+    name: "Understand User Goal"
+    description: |
+      Engage with user to understand their goal:
+      1. Ask clarifying questions if goal is ambiguous
+      2. Identify scope and expected deliverables
+      3. Determine which specialists will be needed
+    output: goal_understanding
+
+  - id: identify-specialists
+    name: "Identify Required Specialists"
+    description: |
+      Based on the goal, determine which Azure agents are needed:
+      - Stratus 🏗️: Infrastructure, Bicep, Landing Zones
+      - Nexus ⚡: Agent Framework SDK, multi-agent code
+      - Prism 🔷: Fabric, OneLake, data pipelines
+      - Forge 🔥: AI Foundry, models, Prompt Flow
+
+      Map goal components to specialist domains.
+    output: specialist_mapping
+
+  - id: decompose-plan
+    name: "Decompose into Steps"
+    description: |
+      Break goal into ordered steps:
+      1. Create numbered task list
+      2. Assign specialist to each task
+      3. Identify dependencies between tasks
+      4. Estimate complexity (simple/medium/complex)
+    output: task_plan
+
+  - id: create-folder-structure
+    name: "Create Context Folder"
+    description: |
+      Create orchestration folder structure:
+      - {output_folder}/conductor/
+      - {output_folder}/conductor/active-task/
+      - {output_folder}/conductor/index.md (TOC)
+      - {output_folder}/conductor/active-task/plan.md
+    output: folder_created
+
+  - id: write-index
+    name: "Initialize Index"
+    description: |
+      Create index.md with format:
+      ```
+      # Conductor Task Index
+
+      | Path | Status | Agent |
+      |------|--------|-------|
+      | active-task/plan.md | in-progress | conductor |
+      ```
+    output: index_initialized
+
+  - id: write-plan
+    name: "Write Plan Document"
+    description: |
+      Create plan.md with:
+      - Original goal
+      - Decomposed steps with specialist assignments
+      - Current status (step 1 pending)
+      - Dependencies noted
+    output: plan_written
+
+  - id: present-plan
+    name: "Present Plan to User"
+    description: |
+      Show user the decomposed plan:
+      - List all steps with assigned specialists
+      - Highlight first step to execute
+      - Ask for confirmation before proceeding
+
+      User can adjust plan before execution.
+    output: user_confirmed
+
+completion:
+  message: "Plan created. Run *continue to begin execution or *status to review."
+  next_action: "*continue"

@@ -1,0 +1,45 @@
+code: azure
+name: "Azure: Microsoft Azure Development Suite"
+default_selected: true
+type: module
+
+header: "Azure Development Suite"
+subheader: "6-agent suite for comprehensive Microsoft Azure development"
+
+# Variables from Core Config inserted:
+## user_name
+## communication_language
+## output_folder
+
+# Module-specific configuration
+azure_output_folder:
+  prompt: "Where should Azure orchestration files be saved?"
+  default: "{output_folder}/azure"
+  result: "{value}"
+
+# Agent Suite
+# This module includes 6 specialized agents:
+#
+# Stratus 🏗️ - Azure Infrastructure & Bicep IaC Specialist
+#   - Landing Zones, AI Landing Zones, WAF, Governance
+#   - Commands: plan-infrastructure, create-bicep, deploy-landing-zone, waf-review, etc.
+#
+# Nexus ⚡ - Microsoft Agent Framework SDK Specialist
+#   - Agent development, multi-agent workflows, MCP integration
+#   - Commands: create-agent, migrate-sk, design-workflow, connect-mcp, etc.
+#
+# Prism 🔷 - Microsoft Fabric Platform Architect
+#   - OneLake, lakehouse, medallion patterns, Delta Lake, Spark
+#   - Commands: design-lakehouse, plan-medallion, create-pipeline, debug-spark, etc.
+#
+# Forge 🔥 - Microsoft Foundry Platform Engineer
+#   - Model catalog, Prompt Flow, evaluations, responsible AI
+#   - Commands: select-model, deploy-model, create-flow, run-eval, red-team, etc.
+#
+# Sentinel 🧪 - Azure SDET & Quality Engineering Specialist
+#   - Infrastructure testing, load testing, chaos engineering, AI evaluation
+#   - Commands: test-bicep, setup-load-testing, setup-chaos-studio, test-agent, etc.
+#
+# Conductor 🎼 - Azure Suite Orchestrator (meta-agent)
+#   - Goal decomposition, workflow orchestration, specialist coordination
+#   - Commands: start, continue, conductor-resume, status, invoke-*, etc.

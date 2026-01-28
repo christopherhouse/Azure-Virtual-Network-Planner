@@ -1,0 +1,44 @@
+# Azure Module Configuration
+# Microsoft Azure Development Suite
+# Version: 1.0.0
+# Date: 2025-01-05
+
+# Module Info
+module_name: azure
+module_description: "Microsoft Azure development suite with 6 specialized agents for infrastructure, AI agents, data platforms, AI Foundry, testing/quality, and orchestration"
+
+# Core Configuration Values (inherited from project)
+user_name: Johnhainjohnhain
+communication_language: English
+document_output_language: English
+output_folder: "{project-root}/_bmad-output"
+
+# Azure-specific Configuration
+azure_output_folder: "{project-root}/_bmad-output/azure"
+
+# Agent Suite
+agents:
+  - name: Stratus
+    file: azure-infrastructure.md
+    icon: "🏗️"
+    domain: "Azure Infrastructure, Bicep, Landing Zones, WAF"
+  - name: Nexus
+    file: agent-framework-sdk.md
+    icon: "⚡"
+    domain: "Agent Framework SDK, multi-agent workflows, MCP"
+  - name: Prism
+    file: fabric.md
+    icon: "🔷"
+    domain: "Microsoft Fabric, OneLake, data pipelines"
+  - name: Forge
+    file: ai-foundry.md
+    icon: "🔥"
+    domain: "AI Foundry, model catalog, Prompt Flow"
+  - name: Sentinel
+    file: sdet.md
+    icon: "🧪"
+    domain: "Azure testing, DevOps, load testing, chaos engineering"
+  - name: Conductor
+    file: conductor.md
+    icon: "🎼"
+    domain: "Suite orchestration, workflow coordination"
