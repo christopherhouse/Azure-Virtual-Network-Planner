@@ -9,21 +9,23 @@ on:
       - main
   workflow_dispatch:
     inputs:
-      environment:
-        description: 'Environment to deploy to'
-        required: true
-        default: 'dev'
-        type: choice
-        options:
-          - dev
-          - prod
       deploy_infra:
         description: 'Deploy infrastructure (ACR, CAE, KV, UAMI)'
         required: false
         default: false
         type: boolean
-      release:
-        description: 'Create a release with version from VERSION file'
+      deploy_dev:
+        description: 'Deploy to Dev environment'
+        required: false
+        default: true
+        type: boolean
+      deploy_prod:
+        description: 'Deploy to Prod environment'
+        required: false
+        default: false
+        type: boolean
+      create_release:
+        description: 'Create GitHub release for current version'
         required: false
         default: false
         type: boolean
@@ -32,104 +34,40 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
-# Required for OIDC authentication with Azure
 permissions:
   id-token: write
-  contents: read
+  contents: write  # Needed for creating releases
   packages: write
 
 jobs:
   # ===========================================================================
-  # Job 1: Deploy Core Infrastructure (optional, on-demand)
-  # ===========================================================================
-  deploy-infra-dev:
-    name: Deploy Core Infrastructure (Dev)
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_infra == 'true' && github.event.inputs.environment == 'dev'
-    environment: development
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Azure Login (OIDC)
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Deploy Core Infrastructure
-        uses: azure/arm-deploy@v2
-        with:
-          resourceGroupName: ${{ vars.RESOURCE_GROUP }}
-          template: ./infra/main.bicep
-          parameters: ./infra/main.dev.bicepparam
-          deploymentName: infra-${{ github.run_id }}
-          failOnStdErr: false
-
-  deploy-infra-prod:
-    name: Deploy Core Infrastructure (Prod)
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_infra == 'true' && github.event.inputs.environment == 'prod'
-    environment: production
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Azure Login (OIDC)
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Deploy Core Infrastructure
-        uses: azure/arm-deploy@v2
-        with:
-          resourceGroupName: ${{ vars.RESOURCE_GROUP }}
-          template: ./infra/main.bicep
-          parameters: ./infra/main.prod.bicepparam
-          deploymentName: infra-${{ github.run_id }}
-          failOnStdErr: false
-
-  # ===========================================================================
-  # Job 2: Build and Push to GHCR
+  # Job 1: Build and Push to GHCR
   # ===========================================================================
   build:
-    name: Build and Push Container Image
+    name: 1. Build & Push to GHCR
     runs-on: ubuntu-latest
 
     outputs:
       image-tag: ${{ steps.version.outputs.tag }}
-      image-digest: ${{ steps.build.outputs.digest }}
       version: ${{ steps.version.outputs.version }}
-      is-release: ${{ steps.version.outputs.is_release }}
+      short-sha: ${{ steps.version.outputs.short_sha }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Read VERSION file and determine tags
+      - name: Read VERSION and determine tags
         id: version
         run: |
           VERSION=$(cat VERSION | tr -d '[:space:]')
           SHORT_SHA=$(git rev-parse --short HEAD)
-          IS_RELEASE="${{ github.event.inputs.release == 'true' }}"
           
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "is_release=${IS_RELEASE}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "tag=${SHORT_SHA}" >> $GITHUB_OUTPUT
           
-          if [[ "${IS_RELEASE}" == "true" ]]; then
-            # Release build - use version from VERSION file
-            echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
-            echo "📦 Release build: v${VERSION}"
-          else
-            # Dev build - use SHA
-            echo "tag=${SHORT_SHA}" >> $GITHUB_OUTPUT
-            echo "🔧 Dev build: ${SHORT_SHA} (VERSION: ${VERSION})"
-          fi
+          echo "📦 Version: ${VERSION}"
+          echo "🔖 SHA: ${SHORT_SHA}"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -147,14 +85,9 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            # Always tag with SHA for traceability
             type=sha,prefix=
-            # Version tag for releases (v1.0.0)
-            type=raw,value=v${{ steps.version.outputs.version }},enable=${{ github.event.inputs.release == 'true' }}
-            # Latest only for releases
-            type=raw,value=latest,enable=${{ github.event.inputs.release == 'true' }}
-            # Dev tag for non-release builds
-            type=raw,value=dev,enable=${{ github.event.inputs.release != 'true' && github.event_name != 'pull_request' }}
+            type=raw,value=v${{ steps.version.outputs.version }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and push Docker image
         id: build
@@ -168,20 +101,15 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ===========================================================================
-  # Job 3: Promote to ACR and Deploy App (Dev)
-  # Dev: Deploys on push to main OR manual dispatch to dev (non-release)
+  # Job 2: Deploy Core Infrastructure (optional)
   # ===========================================================================
-  deploy-dev:
-    name: Deploy to Development
-    needs: [build, deploy-infra-dev]
+  deploy-infra-dev:
+    name: 2a. Deploy Infra (Dev)
+    needs: [build]
     runs-on: ubuntu-latest
-    if: |
-      always() && !cancelled() && needs.build.result == 'success' && 
-      needs.build.outputs.is-release != 'true' &&
-      ((github.event_name == 'push' && github.ref == 'refs/heads/main') || 
-       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev'))
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_infra == 'true' && github.event.inputs.deploy_dev == 'true'
     environment: development
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -193,18 +121,132 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Deploy Core Infrastructure
+        uses: azure/arm-deploy@v2
+        with:
+          resourceGroupName: ${{ vars.RESOURCE_GROUP }}
+          template: ./infra/main.bicep
+          parameters: ./infra/main.dev.bicepparam
+          deploymentName: infra-dev-${{ github.run_id }}
+          failOnStdErr: false
+
+  deploy-infra-prod:
+    name: 2b. Deploy Infra (Prod)
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_infra == 'true' && github.event.inputs.deploy_prod == 'true'
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy Core Infrastructure
+        uses: azure/arm-deploy@v2
+        with:
+          resourceGroupName: ${{ vars.RESOURCE_GROUP }}
+          template: ./infra/main.bicep
+          parameters: ./infra/main.prod.bicepparam
+          deploymentName: infra-prod-${{ github.run_id }}
+          failOnStdErr: false
+
+  # ===========================================================================
+  # Job 3: Import to ACR (Dev)
+  # ===========================================================================
+  import-acr-dev:
+    name: 3a. Import to ACR (Dev)
+    needs: [build, deploy-infra-dev]
+    runs-on: ubuntu-latest
+    if: |
+      always() && !cancelled() && needs.build.result == 'success' &&
+      (needs.deploy-infra-dev.result == 'success' || needs.deploy-infra-dev.result == 'skipped') &&
+      (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_dev == 'true'))
+    environment: development
+
+    steps:
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
       - name: Import image to ACR
         run: |
-          echo "🔄 Promoting image from GHCR to ACR..."
-          echo "🏷️  Tag: ${{ needs.build.outputs.image-tag }}"
+          echo "🔄 Importing image from GHCR to ACR (Dev)..."
+          echo "🏷️  Version: v${{ needs.build.outputs.version }}"
+          echo "🔖 SHA: ${{ needs.build.outputs.short-sha }}"
           IMAGE_NAME_LOWER=$(echo "${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
           az acr import \
             --name ${{ vars.ACR_NAME }} \
-            --source ${{ env.REGISTRY }}/${IMAGE_NAME_LOWER}:${{ needs.build.outputs.image-tag }} \
-            --image vnetplanner:${{ needs.build.outputs.image-tag }} \
+            --source ${{ env.REGISTRY }}/${IMAGE_NAME_LOWER}:${{ needs.build.outputs.short-sha }} \
+            --image vnetplanner:${{ needs.build.outputs.short-sha }} \
+            --image vnetplanner:v${{ needs.build.outputs.version }} \
             --image vnetplanner:dev \
             --force
-          echo "✅ Image imported successfully"
+          echo "✅ Image imported to Dev ACR"
+
+  import-acr-prod:
+    name: 3b. Import to ACR (Prod)
+    needs: [build, deploy-infra-prod]
+    runs-on: ubuntu-latest
+    if: |
+      always() && !cancelled() && needs.build.result == 'success' &&
+      (needs.deploy-infra-prod.result == 'success' || needs.deploy-infra-prod.result == 'skipped') &&
+      github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_prod == 'true'
+    environment: production
+
+    steps:
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Import image to ACR
+        run: |
+          echo "🔄 Importing image from GHCR to ACR (Prod)..."
+          echo "🏷️  Version: v${{ needs.build.outputs.version }}"
+          echo "🔖 SHA: ${{ needs.build.outputs.short-sha }}"
+          IMAGE_NAME_LOWER=$(echo "${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
+          az acr import \
+            --name ${{ vars.ACR_NAME }} \
+            --source ${{ env.REGISTRY }}/${IMAGE_NAME_LOWER}:${{ needs.build.outputs.short-sha }} \
+            --image vnetplanner:${{ needs.build.outputs.short-sha }} \
+            --image vnetplanner:v${{ needs.build.outputs.version }} \
+            --image vnetplanner:latest \
+            --force
+          echo "✅ Image imported to Prod ACR"
+
+  # ===========================================================================
+  # Job 4: Deploy App to Dev
+  # ===========================================================================
+  deploy-app-dev:
+    name: 4. Deploy App (Dev)
+    needs: [build, import-acr-dev]
+    runs-on: ubuntu-latest
+    if: |
+      always() && !cancelled() && needs.import-acr-dev.result == 'success'
+    environment: development
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Deploy Container App
         run: |
@@ -214,25 +256,22 @@ jobs:
           RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
           ENVIRONMENT: dev
           ACR_NAME: ${{ vars.ACR_NAME }}
-          IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
+          IMAGE_TAG: ${{ needs.build.outputs.short-sha }}
           IMAGE_VERSION: ${{ needs.build.outputs.version }}
           BASE_NAME: vnetplanner
           LOCATION: eastus2
 
   # ===========================================================================
-  # Job 4: Promote to ACR and Deploy App (Prod)
-  # Prod: Deploys on manual dispatch with release=true OR prod environment
+  # Job 5: Deploy App to Prod
   # ===========================================================================
-  deploy-prod:
-    name: Deploy to Production
-    needs: [build, deploy-infra-prod]
+  deploy-app-prod:
+    name: 5. Deploy App (Prod)
+    needs: [build, import-acr-prod]
     runs-on: ubuntu-latest
     if: |
-      always() && !cancelled() && needs.build.result == 'success' && 
-      github.event_name == 'workflow_dispatch' && 
-      (github.event.inputs.release == 'true' || github.event.inputs.environment == 'prod')
+      always() && !cancelled() && needs.import-acr-prod.result == 'success'
     environment: production
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -244,19 +283,6 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Import image to ACR
-        run: |
-          echo "🔄 Promoting image from GHCR to ACR..."
-          echo "🚀 Release: ${{ needs.build.outputs.image-tag }} (v${{ needs.build.outputs.version }})"
-          IMAGE_NAME_LOWER=$(echo "${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
-          az acr import \
-            --name ${{ vars.ACR_NAME }} \
-            --source ${{ env.REGISTRY }}/${IMAGE_NAME_LOWER}:${{ needs.build.outputs.image-tag }} \
-            --image vnetplanner:${{ needs.build.outputs.image-tag }} \
-            --image vnetplanner:latest \
-            --force
-          echo "✅ Image imported successfully"
-
       - name: Deploy Container App
         run: |
           chmod +x ./infra/scripts/deploy-app.sh
@@ -265,7 +291,42 @@ jobs:
           RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
           ENVIRONMENT: prod
           ACR_NAME: ${{ vars.ACR_NAME }}
-          IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
+          IMAGE_TAG: ${{ needs.build.outputs.short-sha }}
           IMAGE_VERSION: ${{ needs.build.outputs.version }}
           BASE_NAME: vnetplanner
           LOCATION: eastus
+
+  # ===========================================================================
+  # Job 6: Create GitHub Release
+  # ===========================================================================
+  create-release:
+    name: 6. Create Release
+    needs: [build, deploy-app-prod]
+    runs-on: ubuntu-latest
+    if: |
+      always() && !cancelled() && needs.deploy-app-prod.result == 'success' &&
+      github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.build.outputs.version }}
+          name: Release v${{ needs.build.outputs.version }}
+          body: |
+            ## 🚀 Release v${{ needs.build.outputs.version }}
+            
+            **Commit:** ${{ github.sha }}
+            **Build:** ${{ needs.build.outputs.short-sha }}
+            
+            ### Container Images
+            - GHCR: `ghcr.io/${{ github.repository }}:v${{ needs.build.outputs.version }}`
+            - ACR: `${{ vars.ACR_NAME }}.azurecr.io/vnetplanner:v${{ needs.build.outputs.version }}`
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
