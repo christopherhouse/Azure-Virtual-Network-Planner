@@ -39,8 +39,25 @@ param maxReplicas int = 4
 @description('Environment variables for the container')
 param envVars array = []
 
+@description('Application Insights connection string (optional)')
+param appInsightsConnectionString string = ''
+
 @description('Tags for the resources')
 param tags object = {}
+
+// Build environment variables array with App Insights if provided
+var baseEnvVars = envVars
+var appInsightsEnvVar = !empty(appInsightsConnectionString) ? [
+  {
+    name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+    value: appInsightsConnectionString
+  }
+  {
+    name: 'NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING'
+    value: appInsightsConnectionString
+  }
+] : []
+var allEnvVars = concat(baseEnvVars, appInsightsEnvVar)
 
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: containerAppName
@@ -78,7 +95,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json(cpu)
             memory: memory
           }
-          env: envVars
+          env: allEnvVars
         }
       ]
       scale: {
