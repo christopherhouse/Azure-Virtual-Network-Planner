@@ -108,13 +108,13 @@ export function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">{project.name}</h2>
+          <h2 className="text-2xl font-bold gradient-text">{project.name}</h2>
           {project.description && (
             <p className="text-muted-foreground">{project.description}</p>
           )}
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2" onClick={() => setExportOpen(true)}>
+          <Button variant="outline" className="gap-2 hover:border-primary/50 hover:bg-primary/5" onClick={() => setExportOpen(true)}>
             <Download className="h-4 w-4" />
             Export
           </Button>
@@ -123,7 +123,7 @@ export function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button className="gap-2">
+              <Button className="gap-2 btn-glow">
                 <Plus className="h-4 w-4" />
                 Add VNet
               </Button>
@@ -205,14 +205,17 @@ export function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
       </div>
 
       {project.vnets.length === 0 ? (
-        <Card className="border-dashed">
+        <Card className="border-dashed border-2 border-primary/20 bg-gradient-to-br from-card to-muted/20">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Network className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No VNets yet</h3>
+            <div className="relative mb-4">
+              <div className="absolute inset-0 bg-primary/10 blur-2xl rounded-full" />
+              <Network className="relative h-16 w-16 text-primary/60" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2 gradient-text">No VNets yet</h3>
             <p className="text-muted-foreground text-center mb-4">
               Add your first virtual network to start planning subnets
             </p>
-            <Button onClick={() => setNewVNetOpen(true)} className="gap-2">
+            <Button onClick={() => setNewVNetOpen(true)} className="gap-2 btn-glow">
               <Plus className="h-4 w-4" />
               Add Your First VNet
             </Button>

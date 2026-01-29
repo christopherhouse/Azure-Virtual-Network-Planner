@@ -68,14 +68,14 @@ export function ProjectList() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Projects</h2>
+          <h2 className="text-2xl font-bold gradient-text">Projects</h2>
           <p className="text-muted-foreground">
             Create and manage your Azure VNet planning projects
           </p>
         </div>
         <Dialog open={newProjectOpen} onOpenChange={setNewProjectOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2">
+            <Button className="gap-2 btn-glow">
               <Plus className="h-4 w-4" />
               New Project
             </Button>
@@ -120,14 +120,17 @@ export function ProjectList() {
       </div>
 
       {state.projects.length === 0 ? (
-        <Card className="border-dashed">
+        <Card className="border-dashed border-2 border-primary/20 bg-gradient-to-br from-card to-muted/20">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Network className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No projects yet</h3>
+            <div className="relative mb-4">
+              <div className="absolute inset-0 bg-primary/10 blur-2xl rounded-full" />
+              <Network className="relative h-16 w-16 text-primary/60" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2 gradient-text">No projects yet</h3>
             <p className="text-muted-foreground text-center mb-4">
               Create your first project to start planning Azure VNets
             </p>
-            <Button onClick={() => setNewProjectOpen(true)} className="gap-2">
+            <Button onClick={() => setNewProjectOpen(true)} className="gap-2 btn-glow">
               <Plus className="h-4 w-4" />
               Create Your First Project
             </Button>
@@ -138,13 +141,15 @@ export function ProjectList() {
           {state.projects.map(project => (
             <Card
               key={project.id}
-              className="cursor-pointer hover:border-primary/50 transition-colors"
+              className="cursor-pointer card-glow hover:border-primary/50 transition-all duration-300"
               onClick={() => setActiveProject(project.id)}
             >
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2">
-                    <FolderOpen className="h-5 w-5 text-primary" />
+                    <div className="p-1.5 rounded-lg bg-primary/10">
+                      <FolderOpen className="h-4 w-4 text-primary" />
+                    </div>
                     <CardTitle className="text-lg">{project.name}</CardTitle>
                   </div>
                   <DropdownMenu>
