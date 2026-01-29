@@ -190,6 +190,8 @@ jobs:
             --image vnetplanner:${{ needs.build.outputs.short-sha }} \
             --image vnetplanner:v${{ needs.build.outputs.version }} \
             --image vnetplanner:dev \
+            --username ${{ github.actor }} \
+            --password ${{ secrets.GITHUB_TOKEN }} \
             --force
           echo "✅ Image imported to Dev ACR"
 
@@ -223,6 +225,8 @@ jobs:
             --image vnetplanner:${{ needs.build.outputs.short-sha }} \
             --image vnetplanner:v${{ needs.build.outputs.version }} \
             --image vnetplanner:latest \
+            --username ${{ github.actor }} \
+            --password ${{ secrets.GITHUB_TOKEN }} \
             --force
           echo "✅ Image imported to Prod ACR"
 
