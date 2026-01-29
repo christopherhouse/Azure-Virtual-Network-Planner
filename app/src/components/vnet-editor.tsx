@@ -9,27 +9,14 @@ import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { MoreVertical, Edit, Split, Merge, Info, AlertCircle } from 'lucide-react';
-import { SubnetEditor } from './subnet-editor';
-import { getCIDRInfo, parseCIDR } from '@/lib/cidr';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Merge, Network, Zap, Server, Shield } from 'lucide-react';
+import { InlineSubnetRow } from './inline-subnet-row';
+import { getCIDRInfo } from '@/lib/cidr';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface VNetEditorProps {
@@ -39,7 +26,6 @@ interface VNetEditorProps {
 
 export function VNetEditor({ projectId, vnet }: VNetEditorProps) {
   const { splitSubnetInTwo, mergeSubnetsIntoOne, canMergeSubnets } = useApp();
-  const [editSubnetId, setEditSubnetId] = useState<string | null>(null);
   const [selectedForMerge, setSelectedForMerge] = useState<string | null>(null);
 
   const vnetInfo = getCIDRInfo(vnet.addressSpace);
@@ -79,8 +65,6 @@ export function VNetEditor({ projectId, vnet }: VNetEditorProps) {
       .map(s => s.id);
   };
 
-  const editingSubnet = vnet.subnets.find(s => s.id === editSubnetId);
-
   // Sort subnets by CIDR for consistent display
   const sortedSubnets = [...vnet.subnets].sort((a, b) => {
     const aIP = a.cidr.split('/')[0].split('.').map(Number);
@@ -92,201 +76,129 @@ export function VNetEditor({ projectId, vnet }: VNetEditorProps) {
     return 0;
   });
 
+  // Calculate utilization stats
+  const totalAllocated = sortedSubnets.reduce((sum, s) => {
+    const info = getCIDRInfo(s.cidr);
+    return sum + (info?.totalHosts ?? 0);
+  }, 0);
+  const utilization = vnetInfo ? Math.round((totalAllocated / vnetInfo.totalHosts) * 100) : 0;
+
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
+      <Card className="card-glow gradient-border">
+        <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                {vnet.name}
-                <Badge variant="outline">{vnet.addressSpace}</Badge>
+              <CardTitle className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Network className="h-5 w-5 text-primary" />
+                </div>
+                <span className="gradient-text text-xl">{vnet.name}</span>
+                <Badge variant="outline" className="badge-cyan border font-mono">
+                  {vnet.addressSpace}
+                </Badge>
               </CardTitle>
               {vnet.description && (
-                <CardDescription>{vnet.description}</CardDescription>
+                <CardDescription className="mt-1 ml-12">{vnet.description}</CardDescription>
               )}
             </div>
           </div>
         </CardHeader>
         <CardContent>
           {vnetInfo && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-muted rounded-lg">
-              <div>
-                <p className="text-sm text-muted-foreground">Total IPs</p>
-                <p className="text-lg font-semibold">{vnetInfo.totalHosts.toLocaleString()}</p>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6 p-4 bg-muted/50 rounded-xl border border-border/50">
+              <div className="text-center p-3 rounded-lg bg-background/50">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <Zap className="h-4 w-4 text-primary" />
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Total IPs</p>
+                </div>
+                <p className="text-2xl font-bold gradient-text">{vnetInfo.totalHosts.toLocaleString()}</p>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">First IP</p>
-                <p className="text-lg font-semibold font-mono">{vnetInfo.firstIP}</p>
+              <div className="text-center p-3 rounded-lg bg-background/50">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">First IP</p>
+                <p className="text-lg font-semibold font-mono text-[oklch(0.75_0.18_195)]">{vnetInfo.firstIP}</p>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Last IP</p>
-                <p className="text-lg font-semibold font-mono">{vnetInfo.lastIP}</p>
+              <div className="text-center p-3 rounded-lg bg-background/50">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Last IP</p>
+                <p className="text-lg font-semibold font-mono text-[oklch(0.70_0.15_300)]">{vnetInfo.lastIP}</p>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Subnets</p>
-                <p className="text-lg font-semibold">{vnet.subnets.length}</p>
+              <div className="text-center p-3 rounded-lg bg-background/50">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <Server className="h-4 w-4 text-[oklch(0.70_0.18_145)]" />
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Subnets</p>
+                </div>
+                <p className="text-2xl font-bold text-[oklch(0.70_0.18_145)]">{vnet.subnets.length}</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-background/50">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <Shield className="h-4 w-4 text-[oklch(0.75_0.15_85)]" />
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Utilization</p>
+                </div>
+                <p className="text-2xl font-bold text-[oklch(0.75_0.15_85)]">{utilization}%</p>
               </div>
             </div>
           )}
 
           {selectedForMerge && (
-            <Alert className="mb-4">
-              <Merge className="h-4 w-4" />
+            <Alert className="mb-4 border-primary/50 bg-primary/5">
+              <Merge className="h-4 w-4 text-primary" />
               <AlertDescription>
                 Select another adjacent subnet to merge, or click the same subnet to cancel.
               </AlertDescription>
             </Alert>
           )}
 
-          <div className="mb-4 p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
-            <strong>Tip:</strong> Use <strong>Split</strong> to divide a subnet into two smaller subnets, 
-            or <strong>Merge</strong> to combine two adjacent same-size subnets back together.
+          <div className="mb-4 p-3 bg-gradient-to-r from-primary/5 to-accent/5 rounded-lg text-sm text-muted-foreground border border-border/50">
+            <strong className="text-foreground">💡 Tip:</strong> Click on <strong className="text-primary">Name</strong> or <strong className="text-primary">Description</strong> to edit inline. 
+            Use the dropdown menus to change <strong className="text-[oklch(0.70_0.18_145)]">Delegation</strong> and <strong className="text-[oklch(0.75_0.18_195)]">Service Endpoints</strong> directly.
           </div>
 
           <TooltipProvider>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Address Range</TableHead>
-                  <TableHead>Size</TableHead>
-                  <TableHead>Usable IPs</TableHead>
-                  <TableHead>Delegation</TableHead>
-                  <TableHead>Service Endpoints</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedSubnets.map(subnet => {
-                  const subnetInfo = getCIDRInfo(subnet.cidr);
-                  const canSplit = subnetInfo && subnetInfo.prefix < 29;
-                  const mergeableWith = getMergeableSubnets(subnet.id);
-                  const canMerge = mergeableWith.length > 0;
-                  const isSelectedForMerge = selectedForMerge === subnet.id;
-                  const isMergeTarget = selectedForMerge && mergeableWith.includes(selectedForMerge);
-                  
-                  return (
-                    <TableRow 
-                      key={subnet.id}
-                      className={
-                        isSelectedForMerge 
-                          ? 'bg-primary/10 border-primary' 
-                          : isMergeTarget 
-                            ? 'bg-green-500/10 cursor-pointer hover:bg-green-500/20' 
-                            : ''
-                      }
-                      onClick={isMergeTarget ? () => handleMergeSelect(subnet.id) : undefined}
-                    >
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          {subnet.name}
-                          {subnet.description && (
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <Info className="h-4 w-4 text-muted-foreground" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>{subnet.description}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <code className="text-sm bg-muted px-2 py-1 rounded">
-                          {subnet.cidr}
-                        </code>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">/{subnetInfo?.prefix}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {subnetInfo?.usableHosts.toLocaleString() ?? '-'}
-                        <span className="text-xs text-muted-foreground ml-1">
-                          (Azure reserves 5)
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        {subnet.delegation ? (
-                          <Badge variant="secondary">{subnet.delegation.name}</Badge>
-                        ) : (
-                          <span className="text-muted-foreground">None</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {subnet.serviceEndpoints.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {subnet.serviceEndpoints.slice(0, 2).map(ep => (
-                              <Badge key={ep.id} variant="outline" className="text-xs">
-                                {ep.name}
-                              </Badge>
-                            ))}
-                            {subnet.serviceEndpoints.length > 2 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{subnet.serviceEndpoints.length - 2}
-                              </Badge>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">None</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setEditSubnetId(subnet.id)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit Details
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => handleSplit(subnet.id)}
-                              disabled={!canSplit}
-                            >
-                              <Split className="h-4 w-4 mr-2" />
-                              Split in Half
-                              {!canSplit && (
-                                <span className="ml-2 text-xs text-muted-foreground">(min /29)</span>
-                              )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleMergeSelect(subnet.id)}
-                              disabled={!canMerge && !isSelectedForMerge}
-                            >
-                              <Merge className="h-4 w-4 mr-2" />
-                              {isSelectedForMerge ? 'Cancel Merge' : 'Merge with Adjacent'}
-                              {!canMerge && !isSelectedForMerge && (
-                                <span className="ml-2 text-xs text-muted-foreground">(no match)</span>
-                              )}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <div className="rounded-lg border border-border/50 overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <TableHead className="font-semibold">Name</TableHead>
+                    <TableHead className="font-semibold hidden md:table-cell">Description</TableHead>
+                    <TableHead className="font-semibold">Address Range</TableHead>
+                    <TableHead className="font-semibold">Size</TableHead>
+                    <TableHead className="font-semibold">Usable IPs</TableHead>
+                    <TableHead className="font-semibold">Delegation</TableHead>
+                    <TableHead className="font-semibold">Endpoints</TableHead>
+                    <TableHead className="w-[60px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedSubnets.map(subnet => {
+                    const subnetInfo = getCIDRInfo(subnet.cidr);
+                    const canSplit = subnetInfo && subnetInfo.prefix < 29;
+                    const mergeableWith = getMergeableSubnets(subnet.id);
+                    const canMerge = mergeableWith.length > 0;
+                    const isSelectedForMerge = selectedForMerge === subnet.id;
+                    const isMergeTarget = !!(selectedForMerge && mergeableWith.includes(selectedForMerge));
+                    
+                    return (
+                      <InlineSubnetRow
+                        key={subnet.id}
+                        projectId={projectId}
+                        vnetId={vnet.id}
+                        subnet={subnet}
+                        isSelectedForMerge={isSelectedForMerge}
+                        isMergeTarget={isMergeTarget}
+                        canSplit={!!canSplit}
+                        canMerge={canMerge}
+                        onSplit={() => handleSplit(subnet.id)}
+                        onMergeSelect={() => handleMergeSelect(subnet.id)}
+                        onMergeClick={() => handleMergeSelect(subnet.id)}
+                      />
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           </TooltipProvider>
         </CardContent>
       </Card>
-
-      {/* Subnet Editor Dialog */}
-      {editingSubnet && (
-        <SubnetEditor
-          projectId={projectId}
-          vnetId={vnet.id}
-          subnet={editingSubnet}
-          open={!!editSubnetId}
-          onOpenChange={(open: boolean) => !open && setEditSubnetId(null)}
-        />
-      )}
     </div>
   );
 }
