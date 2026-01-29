@@ -20,24 +20,24 @@ export function generateARMTemplate(project: Project): string {
         type: 'string',
         defaultValue: '[resourceGroup().location]',
         metadata: {
-          description: 'Location for all resources'
-        }
-      }
+          description: 'Location for all resources',
+        },
+      },
     },
     variables: {},
     resources: [],
-    outputs: {}
+    outputs: {},
   };
 
   // Generate VNet resources
   project.vnets.forEach(vnet => {
     const vnetResource = generateVNetResource(vnet);
     template.resources.push(vnetResource);
-    
+
     // Add output for VNet ID
     template.outputs[`${sanitizeName(vnet.name)}Id`] = {
       type: 'string',
-      value: `[resourceId('Microsoft.Network/virtualNetworks', '${vnet.name}')]`
+      value: `[resourceId('Microsoft.Network/virtualNetworks', '${vnet.name}')]`,
     };
   });
 
@@ -49,13 +49,13 @@ function generateVNetResource(vnet: VNet): unknown {
     type: 'Microsoft.Network/virtualNetworks',
     apiVersion: '2023-09-01',
     name: vnet.name,
-    location: '[parameters(\'location\')]',
+    location: "[parameters('location')]",
     properties: {
       addressSpace: {
-        addressPrefixes: [vnet.addressSpace]
+        addressPrefixes: [vnet.addressSpace],
       },
-      subnets: vnet.subnets.map(subnet => generateSubnetConfig(subnet))
-    }
+      subnets: vnet.subnets.map(subnet => generateSubnetConfig(subnet)),
+    },
   };
 }
 
@@ -63,8 +63,8 @@ function generateSubnetConfig(subnet: Subnet): unknown {
   const config: Record<string, unknown> = {
     name: subnet.name,
     properties: {
-      addressPrefix: subnet.cidr
-    }
+      addressPrefix: subnet.cidr,
+    },
   };
 
   // Add delegation if present
@@ -73,18 +73,20 @@ function generateSubnetConfig(subnet: Subnet): unknown {
       {
         name: `delegation-${subnet.delegation.id}`,
         properties: {
-          serviceName: subnet.delegation.serviceName
-        }
-      }
+          serviceName: subnet.delegation.serviceName,
+        },
+      },
     ];
   }
 
   // Add service endpoints if present
   if (subnet.serviceEndpoints.length > 0) {
-    (config.properties as Record<string, unknown>).serviceEndpoints = subnet.serviceEndpoints.map(ep => ({
-      service: ep.service,
-      locations: ['*']
-    }));
+    (config.properties as Record<string, unknown>).serviceEndpoints = subnet.serviceEndpoints.map(
+      ep => ({
+        service: ep.service,
+        locations: ['*'],
+      })
+    );
   }
 
   return config;

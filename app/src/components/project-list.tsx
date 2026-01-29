@@ -25,7 +25,8 @@ import {
 import { Plus, FolderOpen, MoreVertical, Trash2, Edit, Network } from 'lucide-react';
 
 export function ProjectList() {
-  const { state, createNewProject, removeProject, setActiveProject, updateProjectDetails } = useApp();
+  const { state, createNewProject, removeProject, setActiveProject, updateProjectDetails } =
+    useApp();
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [editProjectId, setEditProjectId] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -182,9 +183,7 @@ export function ProjectList() {
                   </DropdownMenu>
                 </div>
                 {project.description && (
-                  <CardDescription className="line-clamp-2">
-                    {project.description}
-                  </CardDescription>
+                  <CardDescription className="line-clamp-2">{project.description}</CardDescription>
                 )}
               </CardHeader>
               <CardContent>
@@ -207,11 +206,7 @@ export function ProjectList() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="edit-name">Project Name</Label>
-              <Input
-                id="edit-name"
-                value={name}
-                onChange={e => setName(e.target.value)}
-              />
+              <Input id="edit-name" value={name} onChange={e => setName(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-description">Description (optional)</Label>

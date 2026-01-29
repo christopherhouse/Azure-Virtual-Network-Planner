@@ -3,16 +3,9 @@
 import { useState } from 'react';
 import { VNet } from '@/types';
 import { useApp } from '@/context/app-context';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Merge, Network, Zap, Server, Shield } from 'lucide-react';
 import { InlineSubnetRow } from './inline-subnet-row';
 import { getCIDRInfo } from '@/lib/cidr';
@@ -33,13 +26,13 @@ export function VNetEditor({ projectId, vnet }: VNetEditorProps) {
   const handleSplit = (subnetId: string) => {
     const subnet = vnet.subnets.find(s => s.id === subnetId);
     if (!subnet) return;
-    
+
     const info = getCIDRInfo(subnet.cidr);
     if (!info || info.prefix >= 29) {
       alert('Cannot split this subnet further. Azure minimum subnet size is /29.');
       return;
     }
-    
+
     splitSubnetInTwo(projectId, vnet.id, subnetId);
   };
 
@@ -69,7 +62,7 @@ export function VNetEditor({ projectId, vnet }: VNetEditorProps) {
   const sortedSubnets = [...vnet.subnets].sort((a, b) => {
     const aIP = a.cidr.split('/')[0].split('.').map(Number);
     const bIP = b.cidr.split('/')[0].split('.').map(Number);
-    
+
     for (let i = 0; i < 4; i++) {
       if (aIP[i] !== bIP[i]) return aIP[i] - bIP[i];
     }
@@ -110,29 +103,45 @@ export function VNetEditor({ projectId, vnet }: VNetEditorProps) {
               <div className="text-center p-3 rounded-lg bg-background/50">
                 <div className="flex items-center justify-center gap-2 mb-1">
                   <Zap className="h-4 w-4 text-primary" />
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Total IPs</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Total IPs
+                  </p>
                 </div>
-                <p className="text-2xl font-bold gradient-text">{vnetInfo.totalHosts.toLocaleString()}</p>
+                <p className="text-2xl font-bold gradient-text">
+                  {vnetInfo.totalHosts.toLocaleString()}
+                </p>
               </div>
               <div className="text-center p-3 rounded-lg bg-background/50">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">First IP</p>
-                <p className="text-lg font-semibold font-mono text-[oklch(0.75_0.18_195)]">{vnetInfo.firstIP}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+                  First IP
+                </p>
+                <p className="text-lg font-semibold font-mono text-[oklch(0.75_0.18_195)]">
+                  {vnetInfo.firstIP}
+                </p>
               </div>
               <div className="text-center p-3 rounded-lg bg-background/50">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Last IP</p>
-                <p className="text-lg font-semibold font-mono text-[oklch(0.70_0.15_300)]">{vnetInfo.lastIP}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+                  Last IP
+                </p>
+                <p className="text-lg font-semibold font-mono text-[oklch(0.70_0.15_300)]">
+                  {vnetInfo.lastIP}
+                </p>
               </div>
               <div className="text-center p-3 rounded-lg bg-background/50">
                 <div className="flex items-center justify-center gap-2 mb-1">
                   <Server className="h-4 w-4 text-[oklch(0.70_0.18_145)]" />
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Subnets</p>
                 </div>
-                <p className="text-2xl font-bold text-[oklch(0.70_0.18_145)]">{vnet.subnets.length}</p>
+                <p className="text-2xl font-bold text-[oklch(0.70_0.18_145)]">
+                  {vnet.subnets.length}
+                </p>
               </div>
               <div className="text-center p-3 rounded-lg bg-background/50">
                 <div className="flex items-center justify-center gap-2 mb-1">
                   <Shield className="h-4 w-4 text-[oklch(0.75_0.15_85)]" />
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Utilization</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Utilization
+                  </p>
                 </div>
                 <p className="text-2xl font-bold text-[oklch(0.75_0.15_85)]">{utilization}%</p>
               </div>
@@ -149,8 +158,11 @@ export function VNetEditor({ projectId, vnet }: VNetEditorProps) {
           )}
 
           <div className="mb-4 p-3 bg-gradient-to-r from-primary/5 to-accent/5 rounded-lg text-sm text-muted-foreground border border-border/50">
-            <strong className="text-foreground">💡 Tip:</strong> Click on <strong className="text-primary">Name</strong> or <strong className="text-primary">Description</strong> to edit inline. 
-            Use the dropdown menus to change <strong className="text-[oklch(0.70_0.18_145)]">Delegation</strong> and <strong className="text-[oklch(0.75_0.18_195)]">Service Endpoints</strong> directly.
+            <strong className="text-foreground">💡 Tip:</strong> Click on{' '}
+            <strong className="text-primary">Name</strong> or{' '}
+            <strong className="text-primary">Description</strong> to edit inline. Use the dropdown
+            menus to change <strong className="text-[oklch(0.70_0.18_145)]">Delegation</strong> and{' '}
+            <strong className="text-[oklch(0.75_0.18_195)]">Service Endpoints</strong> directly.
           </div>
 
           <TooltipProvider>
@@ -159,7 +171,9 @@ export function VNetEditor({ projectId, vnet }: VNetEditorProps) {
                 <TableHeader>
                   <TableRow className="bg-muted/30 hover:bg-muted/30">
                     <TableHead className="font-semibold">Name</TableHead>
-                    <TableHead className="font-semibold hidden md:table-cell">Description</TableHead>
+                    <TableHead className="font-semibold hidden md:table-cell">
+                      Description
+                    </TableHead>
                     <TableHead className="font-semibold">Address Range</TableHead>
                     <TableHead className="font-semibold">Size</TableHead>
                     <TableHead className="font-semibold">Usable IPs</TableHead>
@@ -175,8 +189,10 @@ export function VNetEditor({ projectId, vnet }: VNetEditorProps) {
                     const mergeableWith = getMergeableSubnets(subnet.id);
                     const canMerge = mergeableWith.length > 0;
                     const isSelectedForMerge = selectedForMerge === subnet.id;
-                    const isMergeTarget = !!(selectedForMerge && mergeableWith.includes(selectedForMerge));
-                    
+                    const isMergeTarget = !!(
+                      selectedForMerge && mergeableWith.includes(selectedForMerge)
+                    );
+
                     return (
                       <InlineSubnetRow
                         key={subnet.id}

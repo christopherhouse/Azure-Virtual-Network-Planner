@@ -1,15 +1,14 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { ApplicationInsights } from '@microsoft/applicationinsights-web';
 import { AppInsightsContext } from '@microsoft/applicationinsights-react-js';
-import { 
-  initializeAppInsights, 
-  reactPlugin, 
+import {
+  initializeAppInsights,
+  reactPlugin,
   trackEvent,
   trackException,
   trackPageView,
-  trackTrace
+  trackTrace,
 } from '@/lib/app-insights';
 
 interface AppInsightsProviderProps {
@@ -32,7 +31,7 @@ const AppInsightsHelpersContext = createContext<AppInsightsHelpers>({
   trackException: () => {},
   trackPageView: () => {},
   trackTrace: () => {},
-  isInitialized: false
+  isInitialized: false,
 });
 
 /**
@@ -48,12 +47,11 @@ export function useAppInsights() {
  */
 export function AppInsightsProvider({ children }: AppInsightsProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false);
-  const [appInsights, setAppInsights] = useState<ApplicationInsights | null>(null);
 
   useEffect(() => {
     // Initialize App Insights on mount
     const ai = initializeAppInsights();
-    setAppInsights(ai);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional initialization on mount
     setIsInitialized(ai !== null);
 
     // Cleanup on unmount
@@ -72,16 +70,14 @@ export function AppInsightsProvider({ children }: AppInsightsProviderProps) {
         source: 'window.onerror',
         filename: event.filename || 'unknown',
         lineno: String(event.lineno || 0),
-        colno: String(event.colno || 0)
+        colno: String(event.colno || 0),
       });
     };
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      const error = event.reason instanceof Error 
-        ? event.reason 
-        : new Error(String(event.reason));
+      const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
       trackException(error, {
-        source: 'unhandledrejection'
+        source: 'unhandledrejection',
       });
     };
 
@@ -99,14 +95,12 @@ export function AppInsightsProvider({ children }: AppInsightsProviderProps) {
     trackException,
     trackPageView,
     trackTrace,
-    isInitialized
+    isInitialized,
   };
 
   return (
     <AppInsightsHelpersContext.Provider value={helpers}>
-      <AppInsightsContext.Provider value={reactPlugin}>
-        {children}
-      </AppInsightsContext.Provider>
+      <AppInsightsContext.Provider value={reactPlugin}>{children}</AppInsightsContext.Provider>
     </AppInsightsHelpersContext.Provider>
   );
 }

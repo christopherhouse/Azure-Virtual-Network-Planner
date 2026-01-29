@@ -4,41 +4,41 @@ import { Project, VNet, Subnet } from '@/types';
 
 export function generateBicepTemplate(project: Project): string {
   const lines: string[] = [];
-  
+
   // Header comment
   lines.push('// Azure Virtual Network Configuration');
   lines.push(`// Generated from project: ${project.name}`);
   lines.push(`// Generated at: ${new Date().toISOString()}`);
   lines.push('');
-  
+
   // Parameters
   lines.push('// Parameters');
-  lines.push('@description(\'Location for all resources\')');
+  lines.push("@description('Location for all resources')");
   lines.push('param location string = resourceGroup().location');
   lines.push('');
-  
+
   // Generate VNets
   project.vnets.forEach((vnet, index) => {
     if (index > 0) lines.push('');
     lines.push(...generateVNetBicep(vnet));
   });
-  
+
   lines.push('');
-  
+
   // Outputs
   lines.push('// Outputs');
   project.vnets.forEach(vnet => {
     const safeName = sanitizeName(vnet.name);
     lines.push(`output ${safeName}Id string = ${safeName}.id`);
   });
-  
+
   return lines.join('\n');
 }
 
 function generateVNetBicep(vnet: VNet): string[] {
   const lines: string[] = [];
   const safeName = sanitizeName(vnet.name);
-  
+
   lines.push(`// Virtual Network: ${vnet.name}`);
   if (vnet.description) {
     lines.push(`// ${vnet.description}`);
@@ -52,7 +52,7 @@ function generateVNetBicep(vnet: VNet): string[] {
   lines.push(`        '${vnet.addressSpace}'`);
   lines.push('      ]');
   lines.push('    }');
-  
+
   if (vnet.subnets.length > 0) {
     lines.push('    subnets: [');
     vnet.subnets.forEach((subnet, index) => {
@@ -64,21 +64,21 @@ function generateVNetBicep(vnet: VNet): string[] {
     });
     lines.push('    ]');
   }
-  
+
   lines.push('  }');
   lines.push('}');
-  
+
   return lines;
 }
 
 function generateSubnetBicep(subnet: Subnet): string[] {
   const lines: string[] = [];
-  
+
   lines.push('{');
   lines.push(`  name: '${subnet.name}'`);
   lines.push('  properties: {');
   lines.push(`    addressPrefix: '${subnet.cidr}'`);
-  
+
   // Add delegation if present
   if (subnet.delegation) {
     lines.push('    delegations: [');
@@ -90,7 +90,7 @@ function generateSubnetBicep(subnet: Subnet): string[] {
     lines.push('      }');
     lines.push('    ]');
   }
-  
+
   // Add service endpoints if present
   if (subnet.serviceEndpoints.length > 0) {
     lines.push('    serviceEndpoints: [');
@@ -98,16 +98,16 @@ function generateSubnetBicep(subnet: Subnet): string[] {
       lines.push('      {');
       lines.push(`        service: '${ep.service}'`);
       lines.push('        locations: [');
-      lines.push('          \'*\'');
+      lines.push("          '*'");
       lines.push('        ]');
       lines.push('      }' + (index < subnet.serviceEndpoints.length - 1 ? '' : ''));
     });
     lines.push('    ]');
   }
-  
+
   lines.push('  }');
   lines.push('}');
-  
+
   return lines;
 }
 

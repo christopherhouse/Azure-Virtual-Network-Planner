@@ -14,12 +14,7 @@ export function ipToInt(ip: string): number {
  * Convert 32-bit integer to IP address string
  */
 export function intToIp(int: number): string {
-  return [
-    (int >>> 24) & 255,
-    (int >>> 16) & 255,
-    (int >>> 8) & 255,
-    int & 255,
-  ].join('.');
+  return [(int >>> 24) & 255, (int >>> 16) & 255, (int >>> 8) & 255, int & 255].join('.');
 }
 
 /**
@@ -28,15 +23,15 @@ export function intToIp(int: number): string {
 export function parseCIDR(cidr: string): { network: string; prefix: number } | null {
   const match = cidr.match(/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\/(\d{1,2})$/);
   if (!match) return null;
-  
+
   const network = match[1];
   const prefix = parseInt(match[2], 10);
-  
+
   if (prefix < 0 || prefix > 32) return null;
-  
+
   const octets = network.split('.').map(Number);
   if (octets.some(o => o < 0 || o > 255)) return null;
-  
+
   return { network, prefix };
 }
 
@@ -45,22 +40,22 @@ export function parseCIDR(cidr: string): { network: string; prefix: number } | n
  */
 export function validateCIDR(cidr: string): CIDRValidationResult {
   const trimmed = cidr.trim();
-  
+
   if (!trimmed) {
     return { isValid: false, error: 'CIDR block is required' };
   }
-  
+
   const parsed = parseCIDR(trimmed);
   if (!parsed) {
     return { isValid: false, error: 'Invalid CIDR format. Use format like 10.0.0.0/16' };
   }
-  
+
   // Calculate the actual network address
   const networkInt = ipToInt(parsed.network);
   const mask = getNetmaskInt(parsed.prefix);
   const actualNetworkInt = networkInt & mask;
   const actualNetwork = intToIp(actualNetworkInt);
-  
+
   // Check if the provided network is the actual network address
   if (actualNetwork !== parsed.network) {
     return {
@@ -69,7 +64,7 @@ export function validateCIDR(cidr: string): CIDRValidationResult {
       normalized: `${actualNetwork}/${parsed.prefix}`,
     };
   }
-  
+
   return { isValid: true, normalized: trimmed };
 }
 
@@ -126,11 +121,11 @@ export function getFirstIP(cidr: string): string {
 export function getLastIP(cidr: string): string {
   const parsed = parseCIDR(cidr);
   if (!parsed) return '';
-  
+
   const networkInt = ipToInt(parsed.network);
   const hostBits = 32 - parsed.prefix;
   const broadcastInt = (networkInt | ((1 << hostBits) - 1)) >>> 0;
-  
+
   return intToIp(broadcastInt);
 }
 
@@ -140,7 +135,7 @@ export function getLastIP(cidr: string): string {
 export function getCIDRInfo(cidr: string): CIDRInfo | null {
   const parsed = parseCIDR(cidr);
   if (!parsed) return null;
-  
+
   return {
     network: parsed.network,
     prefix: parsed.prefix,
@@ -159,14 +154,14 @@ export function getCIDRInfo(cidr: string): CIDRInfo | null {
 export function cidrContains(parent: string, child: string): boolean {
   const parentParsed = parseCIDR(parent);
   const childParsed = parseCIDR(child);
-  
+
   if (!parentParsed || !childParsed) return false;
   if (childParsed.prefix < parentParsed.prefix) return false;
-  
+
   const parentNetworkInt = ipToInt(parentParsed.network);
   const childNetworkInt = ipToInt(childParsed.network);
   const parentMask = getNetmaskInt(parentParsed.prefix);
-  
+
   return (parentNetworkInt & parentMask) === (childNetworkInt & parentMask);
 }
 
@@ -184,21 +179,21 @@ export function cidrOverlaps(cidr1: string, cidr2: string): boolean {
 export function splitCIDR(cidr: string): SubnetSplitResult | null {
   const parsed = parseCIDR(cidr);
   if (!parsed) return null;
-  
+
   // Cannot split smaller than /29 (Azure minimum subnet size)
   if (parsed.prefix >= 29) return null;
-  
+
   const newPrefix = parsed.prefix + 1;
   const networkInt = ipToInt(parsed.network);
-  
+
   // First half keeps the same network address
   const subnet1Network = parsed.network;
-  
+
   // Second half starts at the midpoint
   const halfSize = Math.pow(2, 32 - newPrefix);
   const subnet2NetworkInt = networkInt + halfSize;
   const subnet2Network = intToIp(subnet2NetworkInt);
-  
+
   return {
     subnet1: {
       cidr: `${subnet1Network}/${newPrefix}`,
@@ -217,33 +212,33 @@ export function splitCIDR(cidr: string): SubnetSplitResult | null {
 export function canMergeCIDR(cidr1: string, cidr2: string): boolean {
   const parsed1 = parseCIDR(cidr1);
   const parsed2 = parseCIDR(cidr2);
-  
+
   if (!parsed1 || !parsed2) return false;
-  
+
   // Must be same prefix size
   if (parsed1.prefix !== parsed2.prefix) return false;
-  
+
   // Cannot merge if already at largest reasonable size
   if (parsed1.prefix <= 8) return false;
-  
+
   const net1Int = ipToInt(parsed1.network);
   const net2Int = ipToInt(parsed2.network);
-  
+
   // Check if they are adjacent siblings (differ only in the bit at their prefix position)
   const parentPrefix = parsed1.prefix - 1;
   const blockSize = Math.pow(2, 32 - parsed1.prefix);
-  
+
   // One should be the first half, one should be the second half
   const lowerNet = Math.min(net1Int, net2Int);
   const higherNet = Math.max(net1Int, net2Int);
-  
+
   // They must be exactly blockSize apart
   if (higherNet - lowerNet !== blockSize) return false;
-  
+
   // The lower network must be at a parent boundary
   const parentMask = getNetmaskInt(parentPrefix);
   if ((lowerNet & parentMask) !== lowerNet) return false;
-  
+
   return true;
 }
 
@@ -252,18 +247,18 @@ export function canMergeCIDR(cidr1: string, cidr2: string): boolean {
  */
 export function mergeCIDR(cidr1: string, cidr2: string): string | null {
   if (!canMergeCIDR(cidr1, cidr2)) return null;
-  
+
   const parsed1 = parseCIDR(cidr1);
   const parsed2 = parseCIDR(cidr2);
-  
+
   if (!parsed1 || !parsed2) return null;
-  
+
   const net1Int = ipToInt(parsed1.network);
   const net2Int = ipToInt(parsed2.network);
-  
+
   const lowerNet = Math.min(net1Int, net2Int);
   const newPrefix = parsed1.prefix - 1;
-  
+
   return `${intToIp(lowerNet)}/${newPrefix}`;
 }
 
@@ -277,24 +272,24 @@ export function findAvailableBlocks(
 ): string[] {
   const parentParsed = parseCIDR(parentCIDR);
   if (!parentParsed || desiredPrefix < parentParsed.prefix) return [];
-  
+
   const blockSize = Math.pow(2, 32 - desiredPrefix);
   const parentNetworkInt = ipToInt(parentParsed.network);
   const parentLastInt = parentNetworkInt + getTotalHosts(parentParsed.prefix) - 1;
-  
+
   const available: string[] = [];
-  
+
   for (let networkInt = parentNetworkInt; networkInt <= parentLastInt; networkInt += blockSize) {
     const candidateCIDR = `${intToIp(networkInt)}/${desiredPrefix}`;
-    
+
     // Check if this candidate overlaps with any allocated block
     const overlaps = allocatedCIDRs.some(allocated => cidrOverlaps(candidateCIDR, allocated));
-    
+
     if (!overlaps) {
       available.push(candidateCIDR);
     }
   }
-  
+
   return available;
 }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Subnet, DelegationOption, ServiceEndpointOption } from '@/types';
+import { Subnet, ServiceEndpointOption } from '@/types';
 import { useApp } from '@/context/app-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,7 +37,7 @@ interface SubnetEditorProps {
 
 export function SubnetEditor({ projectId, vnetId, subnet, open, onOpenChange }: SubnetEditorProps) {
   const { updateSubnetDetails, setSubnetDelegation, setSubnetServiceEndpoints } = useApp();
-  
+
   const [name, setName] = useState(subnet.name);
   const [description, setDescription] = useState(subnet.description);
   const [delegationId, setDelegationId] = useState<string | null>(subnet.delegation?.id ?? null);
@@ -45,9 +45,9 @@ export function SubnetEditor({ projectId, vnetId, subnet, open, onOpenChange }: 
     subnet.serviceEndpoints.map(ep => ep.id)
   );
 
-  // Reset form when subnet changes
+  // Reset form when subnet changes - intentional sync from props for controlled form
   useEffect(() => {
-    setName(subnet.name);
+    setName(subnet.name); // eslint-disable-line react-hooks/set-state-in-effect -- sync from props
     setDescription(subnet.description);
     setDelegationId(subnet.delegation?.id ?? null);
     setSelectedEndpoints(subnet.serviceEndpoints.map(ep => ep.id));
@@ -59,27 +59,25 @@ export function SubnetEditor({ projectId, vnetId, subnet, open, onOpenChange }: 
       name: name.trim(),
       description: description.trim(),
     });
-    
+
     // Update delegation
-    const delegation = delegationId 
-      ? AZURE_DELEGATIONS.find(d => d.id === delegationId) ?? null 
+    const delegation = delegationId
+      ? (AZURE_DELEGATIONS.find(d => d.id === delegationId) ?? null)
       : null;
     setSubnetDelegation(projectId, vnetId, subnet.id, delegation);
-    
+
     // Update service endpoints
     const endpoints = selectedEndpoints
       .map(id => AZURE_SERVICE_ENDPOINTS.find(ep => ep.id === id))
       .filter((ep): ep is ServiceEndpointOption => !!ep);
     setSubnetServiceEndpoints(projectId, vnetId, subnet.id, endpoints);
-    
+
     onOpenChange(false);
   };
 
   const toggleEndpoint = (endpointId: string) => {
     setSelectedEndpoints(prev =>
-      prev.includes(endpointId)
-        ? prev.filter(id => id !== endpointId)
-        : [...prev, endpointId]
+      prev.includes(endpointId) ? prev.filter(id => id !== endpointId) : [...prev, endpointId]
     );
   };
 
@@ -92,7 +90,7 @@ export function SubnetEditor({ projectId, vnetId, subnet, open, onOpenChange }: 
             Configure subnet properties, delegation, and service endpoints.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-6 py-4">
           {/* Basic Info */}
           <div className="space-y-4">
@@ -100,11 +98,7 @@ export function SubnetEditor({ projectId, vnetId, subnet, open, onOpenChange }: 
             <div className="grid gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-subnet-name">Name</Label>
-                <Input
-                  id="edit-subnet-name"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                />
+                <Input id="edit-subnet-name" value={name} onChange={e => setName(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Address Range</Label>
@@ -165,7 +159,8 @@ export function SubnetEditor({ projectId, vnetId, subnet, open, onOpenChange }: 
             <div>
               <h4 className="font-medium">Service Endpoints</h4>
               <p className="text-sm text-muted-foreground">
-                Enable service endpoints to allow traffic to Azure services over the Microsoft backbone network.
+                Enable service endpoints to allow traffic to Azure services over the Microsoft
+                backbone network.
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

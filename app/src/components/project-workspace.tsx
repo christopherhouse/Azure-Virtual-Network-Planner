@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Project, VNet } from '@/types';
+import { Project } from '@/types';
 import { useApp } from '@/context/app-context';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -39,7 +39,7 @@ export function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
   const [editVNetId, setEditVNetId] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [activeVNetId, setActiveVNetId] = useState<string | null>(project.vnets[0]?.id ?? null);
-  
+
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [addressSpace, setAddressSpace] = useState('');
@@ -109,19 +109,24 @@ export function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold gradient-text">{project.name}</h2>
-          {project.description && (
-            <p className="text-muted-foreground">{project.description}</p>
-          )}
+          {project.description && <p className="text-muted-foreground">{project.description}</p>}
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2 hover:border-primary/50 hover:bg-primary/5" onClick={() => setExportOpen(true)}>
+          <Button
+            variant="outline"
+            className="gap-2 hover:border-primary/50 hover:bg-primary/5"
+            onClick={() => setExportOpen(true)}
+          >
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Dialog open={newVNetOpen} onOpenChange={open => {
-            setNewVNetOpen(open);
-            if (!open) resetForm();
-          }}>
+          <Dialog
+            open={newVNetOpen}
+            onOpenChange={open => {
+              setNewVNetOpen(open);
+              if (!open) resetForm();
+            }}
+          >
             <DialogTrigger asChild>
               <Button className="gap-2 btn-glow">
                 <Plus className="h-4 w-4" />
@@ -154,29 +159,33 @@ export function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
                     onChange={e => handleAddressChange(e.target.value)}
                     className={addressError ? 'border-destructive' : ''}
                   />
-                  {addressError && (
-                    <p className="text-sm text-destructive">{addressError}</p>
-                  )}
-                  {addressSpace.trim() && !addressError && (() => {
-                    const info = getCIDRInfo(addressSpace);
-                    if (!info) return null;
-                    return (
-                      <div className="mt-2 p-3 bg-muted rounded-lg text-sm space-y-1">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Total IPs:</span>
-                          <span className="font-medium">{info.totalHosts.toLocaleString()}</span>
+                  {addressError && <p className="text-sm text-destructive">{addressError}</p>}
+                  {addressSpace.trim() &&
+                    !addressError &&
+                    (() => {
+                      const info = getCIDRInfo(addressSpace);
+                      if (!info) return null;
+                      return (
+                        <div className="mt-2 p-3 bg-muted rounded-lg text-sm space-y-1">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Total IPs:</span>
+                            <span className="font-medium">{info.totalHosts.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Range:</span>
+                            <span className="font-mono text-xs">
+                              {info.firstIP} - {info.lastIP}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">
+                              Usable (Azure reserves 5 per subnet):
+                            </span>
+                            <span className="font-medium">{info.usableHosts.toLocaleString()}</span>
+                          </div>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Range:</span>
-                          <span className="font-mono text-xs">{info.firstIP} - {info.lastIP}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Usable (Azure reserves 5 per subnet):</span>
-                          <span className="font-medium">{info.usableHosts.toLocaleString()}</span>
-                        </div>
-                      </div>
-                    );
-                  })()}
+                      );
+                    })()}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="vnet-description">Description (optional)</Label>
@@ -264,12 +273,15 @@ export function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
       )}
 
       {/* Edit VNet Dialog */}
-      <Dialog open={!!editVNetId} onOpenChange={open => {
-        if (!open) {
-          setEditVNetId(null);
-          resetForm();
-        }
-      }}>
+      <Dialog
+        open={!!editVNetId}
+        onOpenChange={open => {
+          if (!open) {
+            setEditVNetId(null);
+            resetForm();
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit VNet</DialogTitle>
@@ -278,11 +290,7 @@ export function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="edit-vnet-name">VNet Name</Label>
-              <Input
-                id="edit-vnet-name"
-                value={name}
-                onChange={e => setName(e.target.value)}
-              />
+              <Input id="edit-vnet-name" value={name} onChange={e => setName(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-vnet-address">Address Space (CIDR)</Label>
@@ -292,29 +300,33 @@ export function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
                 onChange={e => handleAddressChange(e.target.value)}
                 className={addressError ? 'border-destructive' : ''}
               />
-              {addressError && (
-                <p className="text-sm text-destructive">{addressError}</p>
-              )}
-              {addressSpace.trim() && !addressError && (() => {
-                const info = getCIDRInfo(addressSpace);
-                if (!info) return null;
-                return (
-                  <div className="mt-2 p-3 bg-muted rounded-lg text-sm space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Total IPs:</span>
-                      <span className="font-medium">{info.totalHosts.toLocaleString()}</span>
+              {addressError && <p className="text-sm text-destructive">{addressError}</p>}
+              {addressSpace.trim() &&
+                !addressError &&
+                (() => {
+                  const info = getCIDRInfo(addressSpace);
+                  if (!info) return null;
+                  return (
+                    <div className="mt-2 p-3 bg-muted rounded-lg text-sm space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Total IPs:</span>
+                        <span className="font-medium">{info.totalHosts.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Range:</span>
+                        <span className="font-mono text-xs">
+                          {info.firstIP} - {info.lastIP}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">
+                          Usable (Azure reserves 5 per subnet):
+                        </span>
+                        <span className="font-medium">{info.usableHosts.toLocaleString()}</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Range:</span>
-                      <span className="font-mono text-xs">{info.firstIP} - {info.lastIP}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Usable (Azure reserves 5 per subnet):</span>
-                      <span className="font-medium">{info.usableHosts.toLocaleString()}</span>
-                    </div>
-                  </div>
-                );
-              })()}
+                  );
+                })()}
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-vnet-description">Description (optional)</Label>
@@ -340,11 +352,7 @@ export function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
       </Dialog>
 
       {/* Export Dialog */}
-      <ExportDialog
-        open={exportOpen}
-        onOpenChange={setExportOpen}
-        project={project}
-      />
+      <ExportDialog open={exportOpen} onOpenChange={setExportOpen} project={project} />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { seoConfig } from '@/lib/seo-config';
 /**
  * Dynamic sitemap generation for search engines
  * This helps Google and other search engines discover and index your pages
- * 
+ *
  * Learn more: https://nextjs.org/docs/app/api-reference/file-conventions/metadata/sitemap
  */
 export default function sitemap(): MetadataRoute.Sitemap {

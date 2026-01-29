@@ -4,7 +4,7 @@ import { seoConfig } from '@/lib/seo-config';
 /**
  * Web App Manifest for PWA support and SEO
  * This enables "Add to Home Screen" and improves mobile experience
- * 
+ *
  * Learn more: https://nextjs.org/docs/app/api-reference/file-conventions/metadata/manifest
  */
 export default function manifest(): MetadataRoute.Manifest {

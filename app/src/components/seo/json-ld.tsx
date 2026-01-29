@@ -2,10 +2,10 @@ import { seoConfig } from '@/lib/seo-config';
 
 /**
  * JSON-LD Structured Data for rich search results
- * 
+ *
  * This helps search engines understand your content and can result in
  * rich snippets in search results (stars, FAQs, breadcrumbs, etc.)
- * 
+ *
  * Test your structured data: https://search.google.com/test/rich-results
  */
 
@@ -100,30 +100,35 @@ export function FAQJsonLd() {
   const faqs = [
     {
       question: 'What is Azure VNet Planner?',
-      answer: 'Azure VNet Planner is a free online tool for planning Azure Virtual Network (VNet) configurations. It helps you design subnets, calculate CIDR blocks, configure delegations and service endpoints, and export your design as ARM, Bicep, or Terraform templates.',
+      answer:
+        'Azure VNet Planner is a free online tool for planning Azure Virtual Network (VNet) configurations. It helps you design subnets, calculate CIDR blocks, configure delegations and service endpoints, and export your design as ARM, Bicep, or Terraform templates.',
     },
     {
       question: 'How do I calculate Azure subnet sizes?',
-      answer: 'Use our built-in subnet calculator to automatically compute subnet sizes based on CIDR notation. Simply enter your VNet address space and split it into subnets of your desired sizes. The tool handles all the IP math for you.',
+      answer:
+        'Use our built-in subnet calculator to automatically compute subnet sizes based on CIDR notation. Simply enter your VNet address space and split it into subnets of your desired sizes. The tool handles all the IP math for you.',
     },
     {
       question: 'Can I export my VNet design to Infrastructure as Code?',
-      answer: 'Yes! Azure VNet Planner supports exporting your network design to ARM templates, Bicep templates, and Terraform configurations. This allows you to deploy your planned infrastructure directly to Azure.',
+      answer:
+        'Yes! Azure VNet Planner supports exporting your network design to ARM templates, Bicep templates, and Terraform configurations. This allows you to deploy your planned infrastructure directly to Azure.',
     },
     {
       question: 'Is Azure VNet Planner free to use?',
-      answer: 'Yes, Azure VNet Planner is completely free. There are no subscriptions, no sign-ups required, and all your data is stored locally in your browser for privacy.',
+      answer:
+        'Yes, Azure VNet Planner is completely free. There are no subscriptions, no sign-ups required, and all your data is stored locally in your browser for privacy.',
     },
     {
       question: 'What are Azure subnet delegations?',
-      answer: 'Subnet delegations in Azure allow you to designate a subnet for a specific Azure service, such as Azure SQL Managed Instance, Azure App Service, or Azure Container Instances. Our tool helps you configure these delegations correctly.',
+      answer:
+        'Subnet delegations in Azure allow you to designate a subnet for a specific Azure service, such as Azure SQL Managed Instance, Azure App Service, or Azure Container Instances. Our tool helps you configure these delegations correctly.',
     },
   ];
 
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
-    mainEntity: faqs.map((faq) => ({
+    mainEntity: faqs.map(faq => ({
       '@type': 'Question',
       name: faq.question,
       acceptedAnswer: {
