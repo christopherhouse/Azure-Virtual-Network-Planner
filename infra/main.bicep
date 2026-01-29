@@ -27,6 +27,7 @@ var environmentName = 'cae-${resourceSuffix}'
 var logAnalyticsName = 'log-${resourceSuffix}'
 var keyVaultName = 'kv-${resourceSuffix}'
 var identityName = 'id-${resourceSuffix}'
+var appInsightsName = 'appi-${resourceSuffix}'
 
 // Merge default tags with provided tags
 var defaultTags = {
@@ -102,6 +103,28 @@ resource acrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-
   }
 }
 
+// Deploy Application Insights
+module appInsights 'modules/app-insights.bicep' = {
+  name: 'appi-${deployment().name}'
+  params: {
+    location: location
+    appInsightsName: appInsightsName
+    logAnalyticsWorkspaceId: containerAppsEnv.outputs.logAnalyticsId
+    tags: allTags
+  }
+}
+
+// Deploy Diagnostic Settings for all resources
+module diagnosticSettings 'modules/diagnostic-settings.bicep' = {
+  name: 'diag-${deployment().name}'
+  params: {
+    logAnalyticsWorkspaceId: containerAppsEnv.outputs.logAnalyticsId
+    keyVaultName: keyVault.outputs.name
+    acrName: acr.outputs.name
+    containerAppsEnvironmentName: containerAppsEnv.outputs.name
+  }
+}
+
 // Outputs
 @description('Container Registry login server')
 output acrLoginServer string = acr.outputs.loginServer
@@ -129,3 +152,12 @@ output userAssignedIdentityId string = userAssignedIdentity.outputs.id
 
 @description('User Assigned Identity Client ID')
 output userAssignedIdentityClientId string = userAssignedIdentity.outputs.clientId
+
+@description('Log Analytics Workspace ID')
+output logAnalyticsWorkspaceId string = containerAppsEnv.outputs.logAnalyticsId
+
+@description('Application Insights name')
+output appInsightsName string = appInsights.outputs.name
+
+@description('Application Insights connection string')
+output appInsightsConnectionString string = appInsights.outputs.connectionString
