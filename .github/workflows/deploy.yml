@@ -22,6 +22,11 @@ on:
         required: false
         default: false
         type: boolean
+      release:
+        description: 'Create a release with version from VERSION file'
+        required: false
+        default: false
+        type: boolean
 
 env:
   REGISTRY: ghcr.io
@@ -97,12 +102,34 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      image-tag: ${{ steps.meta.outputs.version }}
+      image-tag: ${{ steps.version.outputs.tag }}
       image-digest: ${{ steps.build.outputs.digest }}
+      version: ${{ steps.version.outputs.version }}
+      is-release: ${{ steps.version.outputs.is_release }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Read VERSION file and determine tags
+        id: version
+        run: |
+          VERSION=$(cat VERSION | tr -d '[:space:]')
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          IS_RELEASE="${{ github.event.inputs.release == 'true' }}"
+          
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "is_release=${IS_RELEASE}" >> $GITHUB_OUTPUT
+          
+          if [[ "${IS_RELEASE}" == "true" ]]; then
+            # Release build - use version from VERSION file
+            echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
+            echo "📦 Release build: v${VERSION}"
+          else
+            # Dev build - use SHA
+            echo "tag=${SHORT_SHA}" >> $GITHUB_OUTPUT
+            echo "🔧 Dev build: ${SHORT_SHA} (VERSION: ${VERSION})"
+          fi
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -120,9 +147,14 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
+            # Always tag with SHA for traceability
             type=sha,prefix=
-            type=ref,event=branch
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            # Version tag for releases (v1.0.0)
+            type=raw,value=v${{ steps.version.outputs.version }},enable=${{ github.event.inputs.release == 'true' }}
+            # Latest only for releases
+            type=raw,value=latest,enable=${{ github.event.inputs.release == 'true' }}
+            # Dev tag for non-release builds
+            type=raw,value=dev,enable=${{ github.event.inputs.release != 'true' && github.event_name != 'pull_request' }}
 
       - name: Build and push Docker image
         id: build
@@ -137,12 +169,17 @@ jobs:
 
   # ===========================================================================
   # Job 3: Promote to ACR and Deploy App (Dev)
+  # Dev: Deploys on push to main OR manual dispatch to dev (non-release)
   # ===========================================================================
   deploy-dev:
     name: Deploy to Development
     needs: [build, deploy-infra-dev]
     runs-on: ubuntu-latest
-    if: always() && !cancelled() && needs.build.result == 'success' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev'))
+    if: |
+      always() && !cancelled() && needs.build.result == 'success' && 
+      needs.build.outputs.is-release != 'true' &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/main') || 
+       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev'))
     environment: development
     
     steps:
@@ -159,10 +196,13 @@ jobs:
       - name: Import image to ACR
         run: |
           echo "🔄 Promoting image from GHCR to ACR..."
+          echo "🏷️  Tag: ${{ needs.build.outputs.image-tag }}"
+          IMAGE_NAME_LOWER=$(echo "${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
           az acr import \
             --name ${{ vars.ACR_NAME }} \
-            --source ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image-tag }} \
+            --source ${{ env.REGISTRY }}/${IMAGE_NAME_LOWER}:${{ needs.build.outputs.image-tag }} \
             --image vnetplanner:${{ needs.build.outputs.image-tag }} \
+            --image vnetplanner:dev \
             --force
           echo "✅ Image imported successfully"
 
@@ -175,17 +215,22 @@ jobs:
           ENVIRONMENT: dev
           ACR_NAME: ${{ vars.ACR_NAME }}
           IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
+          IMAGE_VERSION: ${{ needs.build.outputs.version }}
           BASE_NAME: vnetplanner
           LOCATION: eastus2
 
   # ===========================================================================
   # Job 4: Promote to ACR and Deploy App (Prod)
+  # Prod: Deploys on manual dispatch with release=true OR prod environment
   # ===========================================================================
   deploy-prod:
     name: Deploy to Production
     needs: [build, deploy-infra-prod]
     runs-on: ubuntu-latest
-    if: always() && !cancelled() && needs.build.result == 'success' && github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod'
+    if: |
+      always() && !cancelled() && needs.build.result == 'success' && 
+      github.event_name == 'workflow_dispatch' && 
+      (github.event.inputs.release == 'true' || github.event.inputs.environment == 'prod')
     environment: production
     
     steps:
@@ -202,10 +247,13 @@ jobs:
       - name: Import image to ACR
         run: |
           echo "🔄 Promoting image from GHCR to ACR..."
+          echo "🚀 Release: ${{ needs.build.outputs.image-tag }} (v${{ needs.build.outputs.version }})"
+          IMAGE_NAME_LOWER=$(echo "${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
           az acr import \
             --name ${{ vars.ACR_NAME }} \
-            --source ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image-tag }} \
+            --source ${{ env.REGISTRY }}/${IMAGE_NAME_LOWER}:${{ needs.build.outputs.image-tag }} \
             --image vnetplanner:${{ needs.build.outputs.image-tag }} \
+            --image vnetplanner:latest \
             --force
           echo "✅ Image imported successfully"
 
@@ -218,5 +266,6 @@ jobs:
           ENVIRONMENT: prod
           ACR_NAME: ${{ vars.ACR_NAME }}
           IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
+          IMAGE_VERSION: ${{ needs.build.outputs.version }}
           BASE_NAME: vnetplanner
           LOCATION: eastus
