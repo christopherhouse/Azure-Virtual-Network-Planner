@@ -1,5 +1,6 @@
 // Azure Container App Module
-// Deploys a Container App from ACR
+// Deploys a Container App with User Assigned Managed Identity
+// Single revision mode with HTTP scaling (50 concurrent requests, max 4 instances)
 
 @description('Location for the Container App')
 param location string = resourceGroup().location
@@ -16,13 +17,8 @@ param containerImage string
 @description('ACR login server')
 param acrLoginServer string
 
-@description('ACR username')
-@secure()
-param acrUsername string
-
-@description('ACR password')
-@secure()
-param acrPassword string
+@description('User Assigned Managed Identity resource ID')
+param userAssignedIdentityId string
 
 @description('Target port the container listens on')
 param targetPort int = 3000
@@ -36,8 +32,9 @@ param memory string = '1Gi'
 @description('Minimum number of replicas')
 param minReplicas int = 0
 
-@description('Maximum number of replicas')
-param maxReplicas int = 3
+@description('Maximum number of replicas (max 4 for HTTP scaling)')
+@maxValue(4)
+param maxReplicas int = 4
 
 @description('Environment variables for the container')
 param envVars array = []
@@ -49,9 +46,16 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: containerAppName
   location: location
   tags: tags
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${userAssignedIdentityId}': {}
+    }
+  }
   properties: {
     managedEnvironmentId: environmentId
     configuration: {
+      activeRevisionsMode: 'Single'
       ingress: {
         external: true
         targetPort: targetPort
@@ -61,14 +65,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       registries: [
         {
           server: acrLoginServer
-          username: acrUsername
-          passwordSecretRef: 'acr-password'
-        }
-      ]
-      secrets: [
-        {
-          name: 'acr-password'
-          value: acrPassword
+          identity: userAssignedIdentityId
         }
       ]
     }

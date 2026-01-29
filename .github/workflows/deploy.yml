@@ -14,21 +14,90 @@ on:
         options:
           - dev
           - prod
+      deploy_infra:
+        description: 'Deploy infrastructure (ACR, CAE, KV, UAMI)'
+        required: false
+        default: false
+        type: boolean
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
+# Required for OIDC authentication with Azure
+permissions:
+  id-token: write
+  contents: read
+  packages: write
+
 jobs:
+  # ===========================================================================
+  # Job 1: Deploy Core Infrastructure (optional, on-demand)
+  # ===========================================================================
+  deploy-infra-dev:
+    name: Deploy Core Infrastructure (Dev)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_infra == 'true' && github.event.inputs.environment == 'dev'
+    environment: development
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy Core Infrastructure
+        uses: azure/arm-deploy@v2
+        with:
+          resourceGroupName: ${{ vars.RESOURCE_GROUP }}
+          template: ./infra/main.bicep
+          parameters: ./infra/main.dev.bicepparam
+          deploymentName: infra-${{ github.run_id }}
+          failOnStdErr: false
+
+  deploy-infra-prod:
+    name: Deploy Core Infrastructure (Prod)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_infra == 'true' && github.event.inputs.environment == 'prod'
+    environment: production
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy Core Infrastructure
+        uses: azure/arm-deploy@v2
+        with:
+          resourceGroupName: ${{ vars.RESOURCE_GROUP }}
+          template: ./infra/main.bicep
+          parameters: ./infra/main.prod.bicepparam
+          deploymentName: infra-${{ github.run_id }}
+          failOnStdErr: false
+
+  # ===========================================================================
+  # Job 2: Build and Push to GHCR
+  # ===========================================================================
   build:
     name: Build and Push Container Image
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+    needs: [deploy-infra-dev, deploy-infra-prod]
+    if: always() && !cancelled() && !contains(needs.*.result, 'failure')
 
     outputs:
       image-tag: ${{ steps.meta.outputs.version }}
+      image-digest: ${{ steps.build.outputs.digest }}
 
     steps:
       - name: Checkout repository
@@ -55,6 +124,7 @@ jobs:
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and push Docker image
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -64,6 +134,9 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # ===========================================================================
+  # Job 3: Promote to ACR and Deploy App (Dev)
+  # ===========================================================================
   deploy-dev:
     name: Deploy to Development
     needs: build
@@ -75,30 +148,38 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Azure Login
+      - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Login to Azure Container Registry
-        run: |
-          az acr login --name ${{ vars.ACR_NAME }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Import image to ACR
         run: |
+          echo "🔄 Promoting image from GHCR to ACR..."
           az acr import \
             --name ${{ vars.ACR_NAME }} \
             --source ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image-tag }} \
             --image vnetplanner:${{ needs.build.outputs.image-tag }} \
             --force
+          echo "✅ Image imported successfully"
 
-      - name: Deploy to Container Apps
+      - name: Deploy Container App
         run: |
-          az containerapp update \
-            --name ${{ vars.CONTAINER_APP_NAME }} \
-            --resource-group ${{ vars.RESOURCE_GROUP }} \
-            --image ${{ vars.ACR_NAME }}.azurecr.io/vnetplanner:${{ needs.build.outputs.image-tag }}
+          chmod +x ./infra/scripts/deploy-app.sh
+          ./infra/scripts/deploy-app.sh
+        env:
+          RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
+          ENVIRONMENT: dev
+          ACR_NAME: ${{ vars.ACR_NAME }}
+          IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
+          BASE_NAME: vnetplanner
+          LOCATION: eastus2
 
+  # ===========================================================================
+  # Job 4: Promote to ACR and Deploy App (Prod)
+  # ===========================================================================
   deploy-prod:
     name: Deploy to Production
     needs: build
@@ -110,26 +191,31 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Azure Login
+      - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Login to Azure Container Registry
-        run: |
-          az acr login --name ${{ vars.ACR_NAME }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Import image to ACR
         run: |
+          echo "🔄 Promoting image from GHCR to ACR..."
           az acr import \
             --name ${{ vars.ACR_NAME }} \
             --source ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image-tag }} \
             --image vnetplanner:${{ needs.build.outputs.image-tag }} \
             --force
+          echo "✅ Image imported successfully"
 
-      - name: Deploy to Container Apps
+      - name: Deploy Container App
         run: |
-          az containerapp update \
-            --name ${{ vars.CONTAINER_APP_NAME }} \
-            --resource-group ${{ vars.RESOURCE_GROUP }} \
-            --image ${{ vars.ACR_NAME }}.azurecr.io/vnetplanner:${{ needs.build.outputs.image-tag }}
+          chmod +x ./infra/scripts/deploy-app.sh
+          ./infra/scripts/deploy-app.sh
+        env:
+          RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
+          ENVIRONMENT: prod
+          ACR_NAME: ${{ vars.ACR_NAME }}
+          IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
+          BASE_NAME: vnetplanner
+          LOCATION: eastus
