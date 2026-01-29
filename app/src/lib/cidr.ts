@@ -179,14 +179,14 @@ export function cidrOverlaps(cidr1: string, cidr2: string): boolean {
 
 /**
  * Split a CIDR block into two equal halves
- * Returns null if the block cannot be split (prefix >= 30)
+ * Returns null if the block cannot be split (prefix >= 29 for Azure minimum)
  */
 export function splitCIDR(cidr: string): SubnetSplitResult | null {
   const parsed = parseCIDR(cidr);
   if (!parsed) return null;
   
-  // Cannot split smaller than /30 (need at least 4 IPs for 2 usable)
-  if (parsed.prefix >= 30) return null;
+  // Cannot split smaller than /29 (Azure minimum subnet size)
+  if (parsed.prefix >= 29) return null;
   
   const newPrefix = parsed.prefix + 1;
   const networkInt = ipToInt(parsed.network);
@@ -209,6 +209,62 @@ export function splitCIDR(cidr: string): SubnetSplitResult | null {
       addressPrefix: `${subnet2Network}/${newPrefix}`,
     },
   };
+}
+
+/**
+ * Check if two CIDR blocks can be merged (are adjacent siblings of same size)
+ */
+export function canMergeCIDR(cidr1: string, cidr2: string): boolean {
+  const parsed1 = parseCIDR(cidr1);
+  const parsed2 = parseCIDR(cidr2);
+  
+  if (!parsed1 || !parsed2) return false;
+  
+  // Must be same prefix size
+  if (parsed1.prefix !== parsed2.prefix) return false;
+  
+  // Cannot merge if already at largest reasonable size
+  if (parsed1.prefix <= 8) return false;
+  
+  const net1Int = ipToInt(parsed1.network);
+  const net2Int = ipToInt(parsed2.network);
+  
+  // Check if they are adjacent siblings (differ only in the bit at their prefix position)
+  const parentPrefix = parsed1.prefix - 1;
+  const blockSize = Math.pow(2, 32 - parsed1.prefix);
+  
+  // One should be the first half, one should be the second half
+  const lowerNet = Math.min(net1Int, net2Int);
+  const higherNet = Math.max(net1Int, net2Int);
+  
+  // They must be exactly blockSize apart
+  if (higherNet - lowerNet !== blockSize) return false;
+  
+  // The lower network must be at a parent boundary
+  const parentMask = getNetmaskInt(parentPrefix);
+  if ((lowerNet & parentMask) !== lowerNet) return false;
+  
+  return true;
+}
+
+/**
+ * Merge two adjacent CIDR blocks into one larger block
+ */
+export function mergeCIDR(cidr1: string, cidr2: string): string | null {
+  if (!canMergeCIDR(cidr1, cidr2)) return null;
+  
+  const parsed1 = parseCIDR(cidr1);
+  const parsed2 = parseCIDR(cidr2);
+  
+  if (!parsed1 || !parsed2) return null;
+  
+  const net1Int = ipToInt(parsed1.network);
+  const net2Int = ipToInt(parsed2.network);
+  
+  const lowerNet = Math.min(net1Int, net2Int);
+  const newPrefix = parsed1.prefix - 1;
+  
+  return `${intToIp(lowerNet)}/${newPrefix}`;
 }
 
 /**
