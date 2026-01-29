@@ -31,8 +31,9 @@ import {
   deleteSubnet,
   splitSubnet,
   generateId,
+  mergeSubnets,
 } from '@/lib/storage';
-import { splitCIDR } from '@/lib/cidr';
+import { splitCIDR, mergeCIDR, canMergeCIDR } from '@/lib/cidr';
 
 interface AppContextType {
   state: AppState;
@@ -50,10 +51,10 @@ interface AppContextType {
   removeVNet: (projectId: string, vnetId: string) => void;
   
   // Subnet operations
-  createNewSubnet: (projectId: string, vnetId: string, name: string, cidr: string, description?: string) => Subnet;
   updateSubnetDetails: (projectId: string, vnetId: string, subnetId: string, updates: Partial<Subnet>) => void;
-  removeSubnet: (projectId: string, vnetId: string, subnetId: string) => void;
   splitSubnetInTwo: (projectId: string, vnetId: string, subnetId: string) => boolean;
+  mergeSubnetsIntoOne: (projectId: string, vnetId: string, subnetId1: string, subnetId2: string) => boolean;
+  canMergeSubnets: (projectId: string, vnetId: string, subnetId1: string, subnetId2: string) => boolean;
   setSubnetDelegation: (projectId: string, vnetId: string, subnetId: string, delegation: DelegationOption | null) => void;
   setSubnetServiceEndpoints: (projectId: string, vnetId: string, subnetId: string, endpoints: ServiceEndpointOption[]) => void;
 }
@@ -104,7 +105,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState(prev => ({ ...prev, activeProjectId: projectId }));
   }, []);
   
-  // VNet operations
+  // VNet operations - now auto-creates initial subnet covering entire address space
   const createNewVNet = useCallback((
     projectId: string,
     name: string,
@@ -112,6 +113,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     description: string = ''
   ): VNet => {
     const vnet = createVNet(name, addressSpace, description);
+    // Auto-create initial subnet covering entire address space
+    const initialSubnet = createSubnet('Unallocated', addressSpace, 'Initial address space - split to create subnets');
+    vnet.subnets = [initialSubnet];
     setState(prev => addVNet(prev, projectId, vnet));
     return vnet;
   }, []);
@@ -193,6 +197,57 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return true;
   }, [state]);
   
+  const canMergeSubnets = useCallback((
+    projectId: string,
+    vnetId: string,
+    subnetId1: string,
+    subnetId2: string
+  ): boolean => {
+    const vnet = getVNet(state, projectId, vnetId);
+    if (!vnet) return false;
+    
+    const subnet1 = vnet.subnets.find(s => s.id === subnetId1);
+    const subnet2 = vnet.subnets.find(s => s.id === subnetId2);
+    if (!subnet1 || !subnet2) return false;
+    
+    return canMergeCIDR(subnet1.cidr, subnet2.cidr);
+  }, [state]);
+  
+  const mergeSubnetsIntoOne = useCallback((
+    projectId: string,
+    vnetId: string,
+    subnetId1: string,
+    subnetId2: string
+  ): boolean => {
+    const vnet = getVNet(state, projectId, vnetId);
+    if (!vnet) return false;
+    
+    const subnet1 = vnet.subnets.find(s => s.id === subnetId1);
+    const subnet2 = vnet.subnets.find(s => s.id === subnetId2);
+    if (!subnet1 || !subnet2) return false;
+    
+    const mergedCidr = mergeCIDR(subnet1.cidr, subnet2.cidr);
+    if (!mergedCidr) return false;
+    
+    const now = new Date().toISOString();
+    const mergedSubnet: Subnet = {
+      id: generateId(),
+      name: 'Merged',
+      description: '',
+      cidr: mergedCidr,
+      addressPrefix: mergedCidr,
+      delegation: null,
+      serviceEndpoints: [],
+      isAllocated: true,
+      parentId: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    
+    setState(prev => mergeSubnets(prev, projectId, vnetId, subnetId1, subnetId2, mergedSubnet));
+    return true;
+  }, [state]);
+  
   const setSubnetDelegation = useCallback((
     projectId: string,
     vnetId: string,
@@ -221,10 +276,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     createNewVNet,
     updateVNetDetails,
     removeVNet,
-    createNewSubnet,
     updateSubnetDetails,
-    removeSubnet,
     splitSubnetInTwo,
+    mergeSubnetsIntoOne,
+    canMergeSubnets,
     setSubnetDelegation,
     setSubnetServiceEndpoints,
   };

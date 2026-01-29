@@ -27,7 +27,7 @@ import {
 import { Plus, Network, MoreVertical, Trash2, Edit, Download } from 'lucide-react';
 import { VNetEditor } from './vnet-editor';
 import { ExportDialog } from './export-dialog';
-import { validateCIDR } from '@/lib/cidr';
+import { validateCIDR, getCIDRInfo } from '@/lib/cidr';
 
 interface ProjectWorkspaceProps {
   project: Project;
@@ -157,6 +157,26 @@ export function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
                   {addressError && (
                     <p className="text-sm text-destructive">{addressError}</p>
                   )}
+                  {addressSpace.trim() && !addressError && (() => {
+                    const info = getCIDRInfo(addressSpace);
+                    if (!info) return null;
+                    return (
+                      <div className="mt-2 p-3 bg-muted rounded-lg text-sm space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Total IPs:</span>
+                          <span className="font-medium">{info.totalHosts.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Range:</span>
+                          <span className="font-mono text-xs">{info.firstIP} - {info.lastIP}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Usable (Azure reserves 5 per subnet):</span>
+                          <span className="font-medium">{info.usableHosts.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="vnet-description">Description (optional)</Label>
@@ -272,6 +292,26 @@ export function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
               {addressError && (
                 <p className="text-sm text-destructive">{addressError}</p>
               )}
+              {addressSpace.trim() && !addressError && (() => {
+                const info = getCIDRInfo(addressSpace);
+                if (!info) return null;
+                return (
+                  <div className="mt-2 p-3 bg-muted rounded-lg text-sm space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total IPs:</span>
+                      <span className="font-medium">{info.totalHosts.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Range:</span>
+                      <span className="font-mono text-xs">{info.firstIP} - {info.lastIP}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Usable (Azure reserves 5 per subnet):</span>
+                      <span className="font-medium">{info.usableHosts.toLocaleString()}</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-vnet-description">Description (optional)</Label>

@@ -275,3 +275,33 @@ export function splitSubnet(
     subnets: newSubnetsList,
   });
 }
+
+/**
+ * Replace two subnets with one merged subnet
+ */
+export function mergeSubnets(
+  state: AppState,
+  projectId: string,
+  vnetId: string,
+  subnetId1: string,
+  subnetId2: string,
+  mergedSubnet: Subnet
+): AppState {
+  const vnet = getVNet(state, projectId, vnetId);
+  if (!vnet) return state;
+  
+  // Remove both subnets and add the merged one
+  const newSubnets = vnet.subnets.filter(s => s.id !== subnetId1 && s.id !== subnetId2);
+  
+  // Find the position of the first subnet to insert merged subnet there
+  const index1 = vnet.subnets.findIndex(s => s.id === subnetId1);
+  const index2 = vnet.subnets.findIndex(s => s.id === subnetId2);
+  const insertIndex = Math.min(index1, index2);
+  
+  // Insert at the earlier position
+  newSubnets.splice(insertIndex, 0, mergedSubnet);
+  
+  return updateVNet(state, projectId, vnetId, {
+    subnets: newSubnets,
+  });
+}
