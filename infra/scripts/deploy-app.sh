@@ -171,7 +171,7 @@ deploy_app() {
     # Common parameters
     local cpu="0.5"
     local memory="1Gi"
-    local min_replicas=0
+    local min_replicas=1
     local max_replicas=4
     local node_env="development"
     
