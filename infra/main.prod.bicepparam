@@ -4,7 +4,6 @@ using './main.bicep'
 param environment = 'prod'
 param location = 'eastus'
 param baseName = 'vnetplanner'
-param imageTag = 'latest'
 param tags = {
   costCenter: 'production'
 }
