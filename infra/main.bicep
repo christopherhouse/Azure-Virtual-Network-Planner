@@ -63,6 +63,9 @@ module containerAppsEnv 'modules/container-apps-environment.bicep' = {
 // Get ACR credentials for Container App
 resource acrResource 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
   name: acrName
+  dependsOn: [
+    acr
+  ]
 }
 
 // Deploy Container App
