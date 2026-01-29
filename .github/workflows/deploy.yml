@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       environment:
@@ -92,8 +95,6 @@ jobs:
   build:
     name: Build and Push Container Image
     runs-on: ubuntu-latest
-    needs: [deploy-infra-dev, deploy-infra-prod]
-    if: always() && !cancelled() && !contains(needs.*.result, 'failure')
 
     outputs:
       image-tag: ${{ steps.meta.outputs.version }}
@@ -128,7 +129,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -139,9 +140,9 @@ jobs:
   # ===========================================================================
   deploy-dev:
     name: Deploy to Development
-    needs: build
+    needs: [build, deploy-infra-dev]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev')
+    if: always() && !cancelled() && needs.build.result == 'success' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev'))
     environment: development
     
     steps:
@@ -182,9 +183,9 @@ jobs:
   # ===========================================================================
   deploy-prod:
     name: Deploy to Production
-    needs: build
+    needs: [build, deploy-infra-prod]
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod'
+    if: always() && !cancelled() && needs.build.result == 'success' && github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod'
     environment: production
     
     steps:
