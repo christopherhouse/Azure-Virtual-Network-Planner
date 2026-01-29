@@ -1,7 +1,6 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { ApplicationInsights } from '@microsoft/applicationinsights-web';
 import { AppInsightsContext } from '@microsoft/applicationinsights-react-js';
 import { 
   initializeAppInsights, 
@@ -48,12 +47,11 @@ export function useAppInsights() {
  */
 export function AppInsightsProvider({ children }: AppInsightsProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false);
-  const [appInsights, setAppInsights] = useState<ApplicationInsights | null>(null);
 
   useEffect(() => {
     // Initialize App Insights on mount
     const ai = initializeAppInsights();
-    setAppInsights(ai);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional initialization on mount
     setIsInitialized(ai !== null);
 
     // Cleanup on unmount

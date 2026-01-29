@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Subnet, DelegationOption, ServiceEndpointOption } from '@/types';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { Subnet, ServiceEndpointOption } from '@/types';
 import { useApp } from '@/context/app-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,12 +11,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-  DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu';
 import {
   Popover,
@@ -28,7 +23,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Check, ChevronDown, Info, MoreVertical, Split, Merge, X, Pencil } from 'lucide-react';
+import { Check, ChevronDown, Info, MoreVertical, Split, Merge, Pencil } from 'lucide-react';
 import { getCIDRInfo } from '@/lib/cidr';
 import { AZURE_DELEGATIONS } from '@/lib/azure-delegations';
 import { AZURE_SERVICE_ENDPOINTS } from '@/lib/azure-service-endpoints';
@@ -64,6 +59,8 @@ export function InlineSubnetRow({
   // Inline editing states
   const [editingName, setEditingName] = useState(false);
   const [editingDesc, setEditingDesc] = useState(false);
+  // Use key to reset state when subnet changes instead of useEffect with setState
+  const subnetKey = useMemo(() => `${subnet.id}-${subnet.name}-${subnet.description}`, [subnet.id, subnet.name, subnet.description]);
   const [tempName, setTempName] = useState(subnet.name);
   const [tempDesc, setTempDesc] = useState(subnet.description);
   
@@ -87,11 +84,14 @@ export function InlineSubnetRow({
     }
   }, [editingDesc]);
 
-  // Reset temps when subnet changes
+  // Reset temps when subnet prop changes (tracked via subnetKey)
   useEffect(() => {
-    setTempName(subnet.name);
-    setTempDesc(subnet.description);
-  }, [subnet.name, subnet.description]);
+    // Only reset if not currently editing
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync from props
+    if (!editingName) setTempName(subnet.name);
+     
+    if (!editingDesc) setTempDesc(subnet.description);
+  }, [subnetKey, editingName, editingDesc, subnet.name, subnet.description]);
 
   const handleNameSave = () => {
     if (tempName.trim() && tempName !== subnet.name) {

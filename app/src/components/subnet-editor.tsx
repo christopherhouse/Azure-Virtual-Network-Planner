@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Subnet, DelegationOption, ServiceEndpointOption } from '@/types';
+import { Subnet, ServiceEndpointOption } from '@/types';
 import { useApp } from '@/context/app-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,12 +45,12 @@ export function SubnetEditor({ projectId, vnetId, subnet, open, onOpenChange }: 
     subnet.serviceEndpoints.map(ep => ep.id)
   );
 
-  // Reset form when subnet changes
+  // Reset form when subnet changes - intentional sync from props for controlled form
   useEffect(() => {
-    setName(subnet.name);
-    setDescription(subnet.description);
-    setDelegationId(subnet.delegation?.id ?? null);
-    setSelectedEndpoints(subnet.serviceEndpoints.map(ep => ep.id));
+    setName(subnet.name); // eslint-disable-line react-hooks/set-state-in-effect -- sync from props
+    setDescription(subnet.description);  
+    setDelegationId(subnet.delegation?.id ?? null);  
+    setSelectedEndpoints(subnet.serviceEndpoints.map(ep => ep.id));  
   }, [subnet]);
 
   const handleSave = () => {

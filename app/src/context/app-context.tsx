@@ -20,15 +20,12 @@ import {
   addProject,
   updateProject,
   deleteProject,
-  getProject,
   getActiveProject,
   addVNet,
   updateVNet,
   deleteVNet,
   getVNet,
-  addSubnet,
   updateSubnet,
-  deleteSubnet,
   splitSubnet,
   generateId,
   mergeSubnets,
@@ -70,11 +67,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   
   const [isLoaded, setIsLoaded] = useState(false);
   
-  // Load state from local storage on mount
+  // Load state from local storage on mount - intentional initialization pattern
   useEffect(() => {
     const loaded = loadAppState();
-    setState(loaded);
-    setIsLoaded(true);
+    setState(loaded); // eslint-disable-line react-hooks/set-state-in-effect -- initialization
+    setIsLoaded(true);  
   }, []);
   
   // Save state to local storage on change
@@ -129,18 +126,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
   
   // Subnet operations
-  const createNewSubnet = useCallback((
-    projectId: string,
-    vnetId: string,
-    name: string,
-    cidr: string,
-    description: string = ''
-  ): Subnet => {
-    const subnet = createSubnet(name, cidr, description);
-    setState(prev => addSubnet(prev, projectId, vnetId, subnet));
-    return subnet;
-  }, []);
-  
   const updateSubnetDetails = useCallback((
     projectId: string,
     vnetId: string,
@@ -148,10 +133,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     updates: Partial<Subnet>
   ) => {
     setState(prev => updateSubnet(prev, projectId, vnetId, subnetId, updates));
-  }, []);
-  
-  const removeSubnet = useCallback((projectId: string, vnetId: string, subnetId: string) => {
-    setState(prev => deleteSubnet(prev, projectId, vnetId, subnetId));
   }, []);
   
   const splitSubnetInTwo = useCallback((projectId: string, vnetId: string, subnetId: string): boolean => {

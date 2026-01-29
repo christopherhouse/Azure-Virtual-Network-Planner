@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+
+# Coverage
+coverage/
+
+# Cache
+.cache/
+
+# Generated files
+next-env.d.ts
+
+# Package lock
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Auto-generated types
+*.d.ts
