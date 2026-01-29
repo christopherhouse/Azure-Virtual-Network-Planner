@@ -25,7 +25,7 @@ export function initializeAppInsights(): ApplicationInsights | null {
   if (!connectionString) {
     console.warn(
       'Application Insights connection string not found. ' +
-      'Set NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING environment variable to enable telemetry.'
+        'Set NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING environment variable to enable telemetry.'
     );
     return null;
   }
@@ -43,7 +43,7 @@ export function initializeAppInsights(): ApplicationInsights | null {
         extensionConfig: {
           [reactPlugin.identifier]: {
             // Enable automatic route tracking for Next.js
-          }
+          },
         },
         // Enable automatic dependency tracking (fetch/XHR calls)
         enableAutoRouteTracking: true,
@@ -62,7 +62,7 @@ export function initializeAppInsights(): ApplicationInsights | null {
         samplingPercentage: 100,
         // Disable telemetry if in development and no connection string
         disableTelemetry: false,
-      }
+      },
     });
 
     appInsights.loadAppInsights();
@@ -78,7 +78,7 @@ export function initializeAppInsights(): ApplicationInsights | null {
     // Track initial page view
     appInsights.trackPageView({
       name: document.title,
-      uri: window.location.href
+      uri: window.location.href,
     });
 
     // Initialization successful - using warn level as it's allowed by lint rules
@@ -147,14 +147,18 @@ export function trackDependency(
     responseCode,
     type,
     target,
-    properties
+    properties,
   });
 }
 
 /**
  * Track a trace message
  */
-export function trackTrace(message: string, severityLevel?: number, properties?: Record<string, string>) {
+export function trackTrace(
+  message: string,
+  severityLevel?: number,
+  properties?: Record<string, string>
+) {
   appInsights?.trackTrace({ message, severityLevel }, properties);
 }
 

@@ -23,21 +23,21 @@ export function loadAppState(): AppState {
   if (typeof window === 'undefined') {
     return getDefaultState();
   }
-  
+
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
       return getDefaultState();
     }
-    
+
     const state = JSON.parse(stored) as AppState;
-    
+
     // Handle version migrations here if needed
     if (state.version !== CURRENT_VERSION) {
       // Future: Add migration logic
       state.version = CURRENT_VERSION;
     }
-    
+
     return state;
   } catch (error) {
     console.error('Failed to load app state:', error);
@@ -52,7 +52,7 @@ export function saveAppState(state: AppState): void {
   if (typeof window === 'undefined') {
     return;
   }
-  
+
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (error) {
@@ -101,11 +101,7 @@ export function createVNet(name: string, addressSpace: string, description: stri
 /**
  * Create a new subnet
  */
-export function createSubnet(
-  name: string,
-  cidr: string,
-  description: string = ''
-): Subnet {
+export function createSubnet(name: string, cidr: string, description: string = ''): Subnet {
   const now = new Date().toISOString();
   return {
     id: generateId(),
@@ -131,7 +127,11 @@ export function addProject(state: AppState, project: Project): AppState {
   };
 }
 
-export function updateProject(state: AppState, projectId: string, updates: Partial<Project>): AppState {
+export function updateProject(
+  state: AppState,
+  projectId: string,
+  updates: Partial<Project>
+): AppState {
   return {
     ...state,
     projects: state.projects.map(p =>
@@ -145,9 +145,8 @@ export function deleteProject(state: AppState, projectId: string): AppState {
   return {
     ...state,
     projects: newProjects,
-    activeProjectId: state.activeProjectId === projectId
-      ? (newProjects[0]?.id ?? null)
-      : state.activeProjectId,
+    activeProjectId:
+      state.activeProjectId === projectId ? (newProjects[0]?.id ?? null) : state.activeProjectId,
   };
 }
 
@@ -175,7 +174,7 @@ export function updateVNet(
 ): AppState {
   const project = getProject(state, projectId);
   if (!project) return state;
-  
+
   return updateProject(state, projectId, {
     vnets: project.vnets.map(v =>
       v.id === vnetId ? { ...v, ...updates, updatedAt: new Date().toISOString() } : v
@@ -186,7 +185,7 @@ export function updateVNet(
 export function deleteVNet(state: AppState, projectId: string, vnetId: string): AppState {
   const project = getProject(state, projectId);
   if (!project) return state;
-  
+
   return updateProject(state, projectId, {
     vnets: project.vnets.filter(v => v.id !== vnetId),
   });
@@ -205,7 +204,7 @@ export function addSubnet(
 ): AppState {
   const vnet = getVNet(state, projectId, vnetId);
   if (!vnet) return state;
-  
+
   return updateVNet(state, projectId, vnetId, {
     subnets: [...vnet.subnets, subnet],
   });
@@ -220,7 +219,7 @@ export function updateSubnet(
 ): AppState {
   const vnet = getVNet(state, projectId, vnetId);
   if (!vnet) return state;
-  
+
   return updateVNet(state, projectId, vnetId, {
     subnets: vnet.subnets.map(s =>
       s.id === subnetId ? { ...s, ...updates, updatedAt: new Date().toISOString() } : s
@@ -236,7 +235,7 @@ export function deleteSubnet(
 ): AppState {
   const vnet = getVNet(state, projectId, vnetId);
   if (!vnet) return state;
-  
+
   return updateVNet(state, projectId, vnetId, {
     subnets: vnet.subnets.filter(s => s.id !== subnetId),
   });
@@ -264,13 +263,13 @@ export function splitSubnet(
 ): AppState {
   const vnet = getVNet(state, projectId, vnetId);
   if (!vnet) return state;
-  
+
   const subnetIndex = vnet.subnets.findIndex(s => s.id === subnetId);
   if (subnetIndex === -1) return state;
-  
+
   const newSubnetsList = [...vnet.subnets];
   newSubnetsList.splice(subnetIndex, 1, ...newSubnets);
-  
+
   return updateVNet(state, projectId, vnetId, {
     subnets: newSubnetsList,
   });
@@ -289,18 +288,18 @@ export function mergeSubnets(
 ): AppState {
   const vnet = getVNet(state, projectId, vnetId);
   if (!vnet) return state;
-  
+
   // Remove both subnets and add the merged one
   const newSubnets = vnet.subnets.filter(s => s.id !== subnetId1 && s.id !== subnetId2);
-  
+
   // Find the position of the first subnet to insert merged subnet there
   const index1 = vnet.subnets.findIndex(s => s.id === subnetId1);
   const index2 = vnet.subnets.findIndex(s => s.id === subnetId2);
   const insertIndex = Math.min(index1, index2);
-  
+
   // Insert at the earlier position
   newSubnets.splice(insertIndex, 0, mergedSubnet);
-  
+
   return updateVNet(state, projectId, vnetId, {
     subnets: newSubnets,
   });

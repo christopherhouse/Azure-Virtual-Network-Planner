@@ -347,13 +347,10 @@ describe('Storage Utilities', () => {
       });
 
       it('should return unchanged state if subnet not found', () => {
-        const state = splitSubnet(
-          stateWithVNet,
-          project.id,
-          vnet.id,
-          'non-existent',
-          [createSubnet('a', '10.0.0.0/25'), createSubnet('b', '10.0.0.128/25')]
-        );
+        const state = splitSubnet(stateWithVNet, project.id, vnet.id, 'non-existent', [
+          createSubnet('a', '10.0.0.0/25'),
+          createSubnet('b', '10.0.0.128/25'),
+        ]);
         expect(state).toEqual(stateWithVNet);
       });
     });

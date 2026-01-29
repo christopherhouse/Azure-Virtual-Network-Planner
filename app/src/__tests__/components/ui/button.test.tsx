@@ -98,22 +98,39 @@ describe('Button Component', () => {
     it('should handle click events', async () => {
       const user = userEvent.setup();
       let clicked = false;
-      render(<Button onClick={() => { clicked = true; }}>Click me</Button>);
-      
+      render(
+        <Button
+          onClick={() => {
+            clicked = true;
+          }}
+        >
+          Click me
+        </Button>
+      );
+
       const button = screen.getByRole('button');
       await user.click(button);
-      
+
       expect(clicked).toBe(true);
     });
 
     it('should not trigger click when disabled', async () => {
       const user = userEvent.setup();
       let clicked = false;
-      render(<Button disabled onClick={() => { clicked = true; }}>Click me</Button>);
-      
+      render(
+        <Button
+          disabled
+          onClick={() => {
+            clicked = true;
+          }}
+        >
+          Click me
+        </Button>
+      );
+
       const button = screen.getByRole('button');
       await user.click(button);
-      
+
       expect(clicked).toBe(false);
     });
   });
@@ -125,7 +142,7 @@ describe('Button Component', () => {
           <a href="/test">Link Button</a>
         </Button>
       );
-      
+
       const link = screen.getByRole('link');
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute('href', '/test');

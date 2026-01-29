@@ -1,6 +1,6 @@
 /**
  * SEO Configuration for Azure Virtual Network Planner
- * 
+ *
  * This file centralizes all SEO-related configuration for easy maintenance.
  * Update these values to match your production environment.
  */
@@ -9,15 +9,15 @@ export const seoConfig = {
   // Base site information
   siteName: 'Azure VNet Planner',
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL || 'https://azvnetplanner.chrishou.se',
-  
+
   // Default metadata
   defaultTitle: 'Azure Virtual Network Planner | Free Subnet Calculator & VNet Designer',
   titleTemplate: '%s | Azure VNet Planner',
-  
-  defaultDescription: 
+
+  defaultDescription:
     'Free Azure Virtual Network planning tool. Design VNets, calculate subnets, configure delegations, ' +
     'and export to ARM, Bicep, or Terraform. The ultimate subnet calculator for Azure engineers.',
-  
+
   // Target keywords (for reference and meta tags)
   keywords: [
     'Azure virtual network',
@@ -56,9 +56,7 @@ export const seoConfig = {
   },
 
   // Social links (for structured data)
-  socialLinks: [
-    'https://github.com/christopherhouse/Azure-Virtual-Network-Planner',
-  ],
+  socialLinks: ['https://github.com/christopherhouse/Azure-Virtual-Network-Planner'],
 
   // Organization info (for structured data)
   organization: {
@@ -80,7 +78,7 @@ export const seoConfig = {
 export const pageSeo = {
   home: {
     title: 'Azure Virtual Network Planner | Free Subnet Calculator & VNet Designer',
-    description: 
+    description:
       'Plan Azure Virtual Networks with our free online tool. Calculate subnets, configure delegations, ' +
       'service endpoints, and export to ARM, Bicep, or Terraform templates. Trusted by Azure engineers worldwide.',
     keywords: [

@@ -13,16 +13,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Check, ChevronDown, Info, MoreVertical, Split, Merge, Pencil } from 'lucide-react';
 import { getCIDRInfo } from '@/lib/cidr';
 import { AZURE_DELEGATIONS } from '@/lib/azure-delegations';
@@ -55,15 +47,18 @@ export function InlineSubnetRow({
   onMergeClick,
 }: InlineSubnetRowProps) {
   const { updateSubnetDetails, setSubnetDelegation, setSubnetServiceEndpoints } = useApp();
-  
+
   // Inline editing states
   const [editingName, setEditingName] = useState(false);
   const [editingDesc, setEditingDesc] = useState(false);
   // Use key to reset state when subnet changes instead of useEffect with setState
-  const subnetKey = useMemo(() => `${subnet.id}-${subnet.name}-${subnet.description}`, [subnet.id, subnet.name, subnet.description]);
+  const subnetKey = useMemo(
+    () => `${subnet.id}-${subnet.name}-${subnet.description}`,
+    [subnet.id, subnet.name, subnet.description]
+  );
   const [tempName, setTempName] = useState(subnet.name);
   const [tempDesc, setTempDesc] = useState(subnet.description);
-  
+
   const nameInputRef = useRef<HTMLInputElement>(null);
   const descInputRef = useRef<HTMLInputElement>(null);
 
@@ -89,7 +84,7 @@ export function InlineSubnetRow({
     // Only reset if not currently editing
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync from props
     if (!editingName) setTempName(subnet.name);
-     
+
     if (!editingDesc) setTempDesc(subnet.description);
   }, [subnetKey, editingName, editingDesc, subnet.name, subnet.description]);
 
@@ -109,7 +104,11 @@ export function InlineSubnetRow({
     setEditingDesc(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent, saveHandler: () => void, cancelHandler: () => void) => {
+  const handleKeyDown = (
+    e: React.KeyboardEvent,
+    saveHandler: () => void,
+    cancelHandler: () => void
+  ) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       saveHandler();
@@ -120,8 +119,8 @@ export function InlineSubnetRow({
   };
 
   const handleDelegationChange = (delegationId: string | null) => {
-    const delegation = delegationId 
-      ? AZURE_DELEGATIONS.find(d => d.id === delegationId) ?? null 
+    const delegation = delegationId
+      ? (AZURE_DELEGATIONS.find(d => d.id === delegationId) ?? null)
       : null;
     setSubnetDelegation(projectId, vnetId, subnet.id, delegation);
   };
@@ -129,17 +128,17 @@ export function InlineSubnetRow({
   const handleEndpointToggle = (endpointId: string) => {
     const currentIds = subnet.serviceEndpoints.map(ep => ep.id);
     let newIds: string[];
-    
+
     if (currentIds.includes(endpointId)) {
       newIds = currentIds.filter(id => id !== endpointId);
     } else {
       newIds = [...currentIds, endpointId];
     }
-    
+
     const endpoints = newIds
       .map(id => AZURE_SERVICE_ENDPOINTS.find(ep => ep.id === id))
       .filter((ep): ep is ServiceEndpointOption => !!ep);
-    
+
     setSubnetServiceEndpoints(projectId, vnetId, subnet.id, endpoints);
   };
 
@@ -148,7 +147,8 @@ export function InlineSubnetRow({
       className={cn(
         'table-row-glow transition-all duration-200',
         isSelectedForMerge && 'bg-primary/15 ring-1 ring-primary/50',
-        isMergeTarget && 'bg-[oklch(0.70_0.18_145/0.1)] cursor-pointer hover:bg-[oklch(0.70_0.18_145/0.2)]'
+        isMergeTarget &&
+          'bg-[oklch(0.70_0.18_145/0.1)] cursor-pointer hover:bg-[oklch(0.70_0.18_145/0.2)]'
       )}
       onClick={isMergeTarget ? onMergeClick : undefined}
     >
@@ -161,15 +161,17 @@ export function InlineSubnetRow({
               value={tempName}
               onChange={e => setTempName(e.target.value)}
               onBlur={handleNameSave}
-              onKeyDown={e => handleKeyDown(e, handleNameSave, () => {
-                setTempName(subnet.name);
-                setEditingName(false);
-              })}
+              onKeyDown={e =>
+                handleKeyDown(e, handleNameSave, () => {
+                  setTempName(subnet.name);
+                  setEditingName(false);
+                })
+              }
               className="h-7 text-sm w-40"
             />
           </div>
         ) : (
-          <div 
+          <div
             className="inline-edit-cell cursor-pointer flex items-center gap-2 group"
             onClick={() => setEditingName(true)}
           >
@@ -197,15 +199,17 @@ export function InlineSubnetRow({
             value={tempDesc}
             onChange={e => setTempDesc(e.target.value)}
             onBlur={handleDescSave}
-            onKeyDown={e => handleKeyDown(e, handleDescSave, () => {
-              setTempDesc(subnet.description);
-              setEditingDesc(false);
-            })}
+            onKeyDown={e =>
+              handleKeyDown(e, handleDescSave, () => {
+                setTempDesc(subnet.description);
+                setEditingDesc(false);
+              })
+            }
             placeholder="Add description..."
             className="h-7 text-sm"
           />
         ) : (
-          <div 
+          <div
             className="inline-edit-cell cursor-pointer text-muted-foreground text-sm group flex items-center gap-2"
             onClick={() => setEditingDesc(true)}
           >
@@ -243,12 +247,12 @@ export function InlineSubnetRow({
       <TableCell>
         <Popover>
           <PopoverTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               className={cn(
-                "h-7 px-2 gap-1 justify-start font-normal",
-                subnet.delegation ? "badge-green border" : "text-muted-foreground"
+                'h-7 px-2 gap-1 justify-start font-normal',
+                subnet.delegation ? 'badge-green border' : 'text-muted-foreground'
               )}
             >
               {subnet.delegation ? subnet.delegation.name : 'None'}
@@ -264,10 +268,7 @@ export function InlineSubnetRow({
               <Button
                 variant="ghost"
                 size="sm"
-                className={cn(
-                  "w-full justify-start font-normal",
-                  !subnet.delegation && "bg-muted"
-                )}
+                className={cn('w-full justify-start font-normal', !subnet.delegation && 'bg-muted')}
                 onClick={() => handleDelegationChange(null)}
               >
                 <span className="flex-1 text-left">No delegation</span>
@@ -279,16 +280,20 @@ export function InlineSubnetRow({
                   variant="ghost"
                   size="sm"
                   className={cn(
-                    "w-full justify-start font-normal",
-                    subnet.delegation?.id === delegation.id && "bg-muted"
+                    'w-full justify-start font-normal',
+                    subnet.delegation?.id === delegation.id && 'bg-muted'
                   )}
                   onClick={() => handleDelegationChange(delegation.id)}
                 >
                   <div className="flex-1 text-left">
                     <p className="text-sm">{delegation.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{delegation.serviceName}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {delegation.serviceName}
+                    </p>
                   </div>
-                  {subnet.delegation?.id === delegation.id && <Check className="h-4 w-4 flex-shrink-0" />}
+                  {subnet.delegation?.id === delegation.id && (
+                    <Check className="h-4 w-4 flex-shrink-0" />
+                  )}
                 </Button>
               ))}
             </div>
@@ -300,11 +305,7 @@ export function InlineSubnetRow({
       <TableCell>
         <Popover>
           <PopoverTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-7 px-2 gap-1 justify-start font-normal"
-            >
+            <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 justify-start font-normal">
               {subnet.serviceEndpoints.length > 0 ? (
                 <div className="flex items-center gap-1">
                   <Badge variant="outline" className="badge-cyan border text-xs">
@@ -321,7 +322,9 @@ export function InlineSubnetRow({
           <PopoverContent className="w-72 p-0" align="start">
             <div className="p-2 border-b">
               <p className="text-sm font-medium">Service Endpoints</p>
-              <p className="text-xs text-muted-foreground">Enable secure access to Azure services</p>
+              <p className="text-xs text-muted-foreground">
+                Enable secure access to Azure services
+              </p>
             </div>
             <div className="max-h-[300px] overflow-y-auto p-1">
               {AZURE_SERVICE_ENDPOINTS.map(endpoint => {
@@ -332,15 +335,17 @@ export function InlineSubnetRow({
                     variant="ghost"
                     size="sm"
                     className={cn(
-                      "w-full justify-start font-normal",
-                      isSelected && "bg-primary/10"
+                      'w-full justify-start font-normal',
+                      isSelected && 'bg-primary/10'
                     )}
                     onClick={() => handleEndpointToggle(endpoint.id)}
                   >
-                    <div className={cn(
-                      "w-4 h-4 rounded border mr-2 flex items-center justify-center",
-                      isSelected ? "bg-primary border-primary" : "border-muted-foreground"
-                    )}>
+                    <div
+                      className={cn(
+                        'w-4 h-4 rounded border mr-2 flex items-center justify-center',
+                        isSelected ? 'bg-primary border-primary' : 'border-muted-foreground'
+                      )}
+                    >
                       {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
                     </div>
                     <div className="flex-1 text-left">
@@ -364,20 +369,12 @@ export function InlineSubnetRow({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem 
-              onClick={onSplit}
-              disabled={!canSplit}
-            >
+            <DropdownMenuItem onClick={onSplit} disabled={!canSplit}>
               <Split className="h-4 w-4 mr-2" />
               Split in Half
-              {!canSplit && (
-                <span className="ml-2 text-xs text-muted-foreground">(min /29)</span>
-              )}
+              {!canSplit && <span className="ml-2 text-xs text-muted-foreground">(min /29)</span>}
             </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={onMergeSelect}
-              disabled={!canMerge && !isSelectedForMerge}
-            >
+            <DropdownMenuItem onClick={onMergeSelect} disabled={!canMerge && !isSelectedForMerge}>
               <Merge className="h-4 w-4 mr-2" />
               {isSelectedForMerge ? 'Cancel Merge' : 'Merge with Adjacent'}
               {!canMerge && !isSelectedForMerge && (

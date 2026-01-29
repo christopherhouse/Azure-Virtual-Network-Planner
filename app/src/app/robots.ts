@@ -4,7 +4,7 @@ import { seoConfig } from '@/lib/seo-config';
 /**
  * Robots.txt configuration for search engine crawlers
  * This tells search engines which pages to crawl and index
- * 
+ *
  * Learn more: https://nextjs.org/docs/app/api-reference/file-conventions/metadata/robots
  */
 export default function robots(): MetadataRoute.Robots {

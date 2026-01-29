@@ -2,13 +2,13 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { AppInsightsContext } from '@microsoft/applicationinsights-react-js';
-import { 
-  initializeAppInsights, 
-  reactPlugin, 
+import {
+  initializeAppInsights,
+  reactPlugin,
   trackEvent,
   trackException,
   trackPageView,
-  trackTrace
+  trackTrace,
 } from '@/lib/app-insights';
 
 interface AppInsightsProviderProps {
@@ -31,7 +31,7 @@ const AppInsightsHelpersContext = createContext<AppInsightsHelpers>({
   trackException: () => {},
   trackPageView: () => {},
   trackTrace: () => {},
-  isInitialized: false
+  isInitialized: false,
 });
 
 /**
@@ -70,16 +70,14 @@ export function AppInsightsProvider({ children }: AppInsightsProviderProps) {
         source: 'window.onerror',
         filename: event.filename || 'unknown',
         lineno: String(event.lineno || 0),
-        colno: String(event.colno || 0)
+        colno: String(event.colno || 0),
       });
     };
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      const error = event.reason instanceof Error 
-        ? event.reason 
-        : new Error(String(event.reason));
+      const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
       trackException(error, {
-        source: 'unhandledrejection'
+        source: 'unhandledrejection',
       });
     };
 
@@ -97,14 +95,12 @@ export function AppInsightsProvider({ children }: AppInsightsProviderProps) {
     trackException,
     trackPageView,
     trackTrace,
-    isInitialized
+    isInitialized,
   };
 
   return (
     <AppInsightsHelpersContext.Provider value={helpers}>
-      <AppInsightsContext.Provider value={reactPlugin}>
-        {children}
-      </AppInsightsContext.Provider>
+      <AppInsightsContext.Provider value={reactPlugin}>{children}</AppInsightsContext.Provider>
     </AppInsightsHelpersContext.Provider>
   );
 }

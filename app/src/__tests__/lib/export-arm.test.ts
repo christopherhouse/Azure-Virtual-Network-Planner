@@ -280,7 +280,7 @@ describe('ARM Template Generator', () => {
       });
 
       const template = generateARMTemplate(project);
-      
+
       // Should not throw when parsing
       expect(() => JSON.parse(template)).not.toThrow();
     });

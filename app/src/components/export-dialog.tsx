@@ -91,7 +91,11 @@ export function ExportDialog({ open, onOpenChange, project }: ExportDialogProps)
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={format} onValueChange={value => setFormat(value as ExportFormat)} className="flex-1 flex flex-col min-h-0">
+        <Tabs
+          value={format}
+          onValueChange={value => setFormat(value as ExportFormat)}
+          className="flex-1 flex flex-col min-h-0"
+        >
           <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
             <TabsTrigger value="bicep">Bicep</TabsTrigger>
             <TabsTrigger value="arm">ARM (JSON)</TabsTrigger>

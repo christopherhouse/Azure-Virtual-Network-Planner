@@ -47,8 +47,8 @@ describe('Bicep Template Generator', () => {
 
       const template = generateBicepTemplate(project);
 
-      expect(template).toContain("// Virtual Network: my-vnet");
-      expect(template).toContain("// Production VNet");
+      expect(template).toContain('// Virtual Network: my-vnet');
+      expect(template).toContain('// Production VNet');
       expect(template).toContain("resource my_vnet 'Microsoft.Network/virtualNetworks@2023-09-01'");
       expect(template).toContain("name: 'my-vnet'");
       expect(template).toContain("'10.0.0.0/16'");

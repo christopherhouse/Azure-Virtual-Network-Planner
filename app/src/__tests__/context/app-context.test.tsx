@@ -25,7 +25,7 @@ describe('AppContext', () => {
 
     it('should provide initial state', () => {
       const { result } = renderHook(() => useApp(), { wrapper });
-      
+
       expect(result.current.state.projects).toEqual([]);
       expect(result.current.state.activeProjectId).toBeNull();
       expect(result.current.activeProject).toBeUndefined();
@@ -35,7 +35,7 @@ describe('AppContext', () => {
   describe('Project operations', () => {
     it('should create a new project', () => {
       const { result } = renderHook(() => useApp(), { wrapper });
-      
+
       act(() => {
         result.current.createNewProject('Test Project', 'Description');
       });
@@ -47,7 +47,7 @@ describe('AppContext', () => {
 
     it('should set new project as active', () => {
       const { result } = renderHook(() => useApp(), { wrapper });
-      
+
       let project: ReturnType<typeof result.current.createNewProject>;
       act(() => {
         project = result.current.createNewProject('Test Project');
@@ -59,7 +59,7 @@ describe('AppContext', () => {
 
     it('should update project details', () => {
       const { result } = renderHook(() => useApp(), { wrapper });
-      
+
       let project: ReturnType<typeof result.current.createNewProject>;
       act(() => {
         project = result.current.createNewProject('Original Name');
@@ -74,7 +74,7 @@ describe('AppContext', () => {
 
     it('should remove a project', () => {
       const { result } = renderHook(() => useApp(), { wrapper });
-      
+
       let project: ReturnType<typeof result.current.createNewProject>;
       act(() => {
         project = result.current.createNewProject('Test Project');
@@ -89,7 +89,7 @@ describe('AppContext', () => {
 
     it('should change active project', () => {
       const { result } = renderHook(() => useApp(), { wrapper });
-      
+
       let project1: ReturnType<typeof result.current.createNewProject>;
       let project2: ReturnType<typeof result.current.createNewProject>;
       act(() => {
@@ -110,7 +110,7 @@ describe('AppContext', () => {
   describe('VNet operations', () => {
     it('should create a new VNet', () => {
       const { result } = renderHook(() => useApp(), { wrapper });
-      
+
       let project: ReturnType<typeof result.current.createNewProject>;
       act(() => {
         project = result.current.createNewProject('Test Project');
@@ -127,7 +127,7 @@ describe('AppContext', () => {
 
     it('should update VNet details', () => {
       const { result } = renderHook(() => useApp(), { wrapper });
-      
+
       let project: ReturnType<typeof result.current.createNewProject>;
       act(() => {
         project = result.current.createNewProject('Test Project');
@@ -147,7 +147,7 @@ describe('AppContext', () => {
 
     it('should remove a VNet', () => {
       const { result } = renderHook(() => useApp(), { wrapper });
-      
+
       let project: ReturnType<typeof result.current.createNewProject>;
       act(() => {
         project = result.current.createNewProject('Test Project');
@@ -169,7 +169,7 @@ describe('AppContext', () => {
   describe('Subnet operations', () => {
     it('should update subnet details', () => {
       const { result } = renderHook(() => useApp(), { wrapper });
-      
+
       let project: ReturnType<typeof result.current.createNewProject>;
       act(() => {
         project = result.current.createNewProject('Test Project');
@@ -182,7 +182,7 @@ describe('AppContext', () => {
 
       // VNet is created with a default subnet
       const subnetId = result.current.activeProject?.vnets[0].subnets[0]?.id;
-      
+
       if (subnetId) {
         act(() => {
           result.current.updateSubnetDetails(project!.id, vnet!.id, subnetId, { name: 'web-tier' });
@@ -194,7 +194,7 @@ describe('AppContext', () => {
 
     it('should split a subnet', () => {
       const { result } = renderHook(() => useApp(), { wrapper });
-      
+
       let project: ReturnType<typeof result.current.createNewProject>;
       act(() => {
         project = result.current.createNewProject('Test Project');
@@ -207,11 +207,11 @@ describe('AppContext', () => {
 
       const subnetId = result.current.activeProject?.vnets[0].subnets[0]?.id;
       const originalCidr = result.current.activeProject?.vnets[0].subnets[0]?.cidr;
-      
+
       // Only test split if there's a subnet that can be split
       if (subnetId && originalCidr && !originalCidr.endsWith('/29')) {
         const initialCount = result.current.activeProject?.vnets[0].subnets.length ?? 0;
-        
+
         act(() => {
           const success = result.current.splitSubnetInTwo(project!.id, vnet!.id, subnetId);
           expect(success).toBe(true);
@@ -224,7 +224,7 @@ describe('AppContext', () => {
 
     it('should set subnet delegation', () => {
       const { result } = renderHook(() => useApp(), { wrapper });
-      
+
       let project: ReturnType<typeof result.current.createNewProject>;
       act(() => {
         project = result.current.createNewProject('Test Project');
@@ -236,7 +236,7 @@ describe('AppContext', () => {
       });
 
       const subnetId = result.current.activeProject?.vnets[0].subnets[0]?.id;
-      
+
       if (subnetId) {
         const delegation = {
           id: 'aci',
@@ -257,7 +257,7 @@ describe('AppContext', () => {
 
     it('should set subnet service endpoints', () => {
       const { result } = renderHook(() => useApp(), { wrapper });
-      
+
       let project: ReturnType<typeof result.current.createNewProject>;
       act(() => {
         project = result.current.createNewProject('Test Project');
@@ -269,7 +269,7 @@ describe('AppContext', () => {
       });
 
       const subnetId = result.current.activeProject?.vnets[0].subnets[0]?.id;
-      
+
       if (subnetId) {
         const endpoints = [
           {
@@ -295,7 +295,7 @@ describe('AppContext', () => {
   describe('Persistence', () => {
     it('should persist state to localStorage', async () => {
       const { result } = renderHook(() => useApp(), { wrapper });
-      
+
       act(() => {
         result.current.createNewProject('Persistent Project');
       });
@@ -313,12 +313,11 @@ describe('useApp outside provider', () => {
   it('should throw error when used outside provider', () => {
     // Suppress console.error for this test
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    
+
     expect(() => {
       renderHook(() => useApp());
     }).toThrow('useApp must be used within an AppProvider');
-    
+
     consoleSpy.mockRestore();
   });
 });
-
