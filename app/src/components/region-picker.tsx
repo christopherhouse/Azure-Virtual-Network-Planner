@@ -44,7 +44,7 @@ export function RegionPicker({
         </div>
       </SelectTrigger>
       <SelectContent className="max-h-[300px]">
-        {regionGroups.map((group) => (
+        {regionGroups.map(group => (
           <SelectGroup key={group.geography}>
             <SelectLabel className="font-semibold text-xs uppercase tracking-wider text-muted-foreground bg-muted/50 -mx-1 px-3 py-2">
               {group.geography}

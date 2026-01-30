@@ -38,7 +38,9 @@ export function generateTerraformTemplate(project: Project): string {
   lines.push('');
   lines.push('variable "default_location" {');
   lines.push('  type        = string');
-  lines.push('  description = "Default Azure region for resources (used when VNet region not specified)"');
+  lines.push(
+    '  description = "Default Azure region for resources (used when VNet region not specified)"'
+  );
   lines.push('  default     = "eastus"');
   lines.push('}');
   lines.push('');

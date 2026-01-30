@@ -55,7 +55,9 @@ export function generateARMTemplate(project: Project): string {
 function generateVNetResource(vnet: VNet): unknown {
   // Use VNet's specific region if set, otherwise fall back to parameter
   const location = vnet.region ? vnet.region : "[parameters('defaultLocation')]";
-  const locationComment = vnet.region ? getRegionDisplayName(vnet.region) : 'Using default location';
+  const locationComment = vnet.region
+    ? getRegionDisplayName(vnet.region)
+    : 'Using default location';
 
   return {
     type: 'Microsoft.Network/virtualNetworks',

@@ -14,7 +14,9 @@ export function generateBicepTemplate(project: Project): string {
 
   // Parameters - default location as fallback
   lines.push('// Parameters');
-  lines.push("@description('Default location for resources (used when VNet region not specified)')");
+  lines.push(
+    "@description('Default location for resources (used when VNet region not specified)')"
+  );
   lines.push('param defaultLocation string = resourceGroup().location');
   lines.push('');
 
