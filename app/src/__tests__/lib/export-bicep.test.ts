@@ -26,8 +26,10 @@ describe('Bicep Template Generator', () => {
       const project = createTestProject();
       const template = generateBicepTemplate(project);
 
-      expect(template).toContain("@description('Location for all resources')");
-      expect(template).toContain('param location string = resourceGroup().location');
+      expect(template).toContain(
+        "@description('Default location for resources (used when VNet region not specified)')"
+      );
+      expect(template).toContain('param defaultLocation string = resourceGroup().location');
     });
 
     it('should generate VNet resource', () => {
@@ -38,6 +40,7 @@ describe('Bicep Template Generator', () => {
             name: 'my-vnet',
             description: 'Production VNet',
             addressSpace: '10.0.0.0/16',
+            region: 'eastus',
             subnets: [],
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
@@ -62,6 +65,7 @@ describe('Bicep Template Generator', () => {
             name: 'my-vnet',
             description: '',
             addressSpace: '10.0.0.0/16',
+            region: 'eastus',
             subnets: [
               {
                 id: 'subnet-1',
@@ -97,6 +101,7 @@ describe('Bicep Template Generator', () => {
             name: 'my-vnet',
             description: '',
             addressSpace: '10.0.0.0/16',
+            region: 'eastus',
             subnets: [
               {
                 id: 'subnet-1',
@@ -138,6 +143,7 @@ describe('Bicep Template Generator', () => {
             name: 'my-vnet',
             description: '',
             addressSpace: '10.0.0.0/16',
+            region: 'eastus',
             subnets: [
               {
                 id: 'subnet-1',
@@ -180,6 +186,7 @@ describe('Bicep Template Generator', () => {
             name: 'my-vnet',
             description: '',
             addressSpace: '10.0.0.0/16',
+            region: 'eastus',
             subnets: [],
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
@@ -201,6 +208,7 @@ describe('Bicep Template Generator', () => {
             name: 'my-complex-vnet-name',
             description: '',
             addressSpace: '10.0.0.0/16',
+            region: 'eastus',
             subnets: [],
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
@@ -223,6 +231,7 @@ describe('Bicep Template Generator', () => {
             name: '123-vnet',
             description: '',
             addressSpace: '10.0.0.0/16',
+            region: 'eastus',
             subnets: [],
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
@@ -244,6 +253,7 @@ describe('Bicep Template Generator', () => {
             name: 'vnet-prod',
             description: '',
             addressSpace: '10.0.0.0/16',
+            region: 'eastus',
             subnets: [],
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
@@ -253,6 +263,7 @@ describe('Bicep Template Generator', () => {
             name: 'vnet-dev',
             description: '',
             addressSpace: '10.1.0.0/16',
+            region: 'eastus',
             subnets: [],
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
@@ -273,7 +284,7 @@ describe('Bicep Template Generator', () => {
       const template = generateBicepTemplate(project);
 
       expect(template).toContain('// Azure Virtual Network Configuration');
-      expect(template).toContain('param location');
+      expect(template).toContain('param defaultLocation');
       expect(template).toContain('// Outputs');
     });
   });

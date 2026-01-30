@@ -1,6 +1,7 @@
 // ARM Template Generator
 
 import { Project, VNet, Subnet } from '@/types';
+import { getRegionDisplayName } from '@/lib/azure-regions';
 
 interface ARMTemplate {
   $schema: string;
@@ -16,11 +17,12 @@ export function generateARMTemplate(project: Project): string {
     $schema: 'https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#',
     contentVersion: '1.0.0.0',
     parameters: {
-      location: {
+      // Keep global location as optional fallback for VNets without region set
+      defaultLocation: {
         type: 'string',
         defaultValue: '[resourceGroup().location]',
         metadata: {
-          description: 'Location for all resources',
+          description: 'Default location for resources (used when VNet region not specified)',
         },
       },
     },
@@ -39,17 +41,30 @@ export function generateARMTemplate(project: Project): string {
       type: 'string',
       value: `[resourceId('Microsoft.Network/virtualNetworks', '${vnet.name}')]`,
     };
+
+    // Add output for VNet location
+    template.outputs[`${sanitizeName(vnet.name)}Location`] = {
+      type: 'string',
+      value: vnet.region || "[parameters('defaultLocation')]",
+    };
   });
 
   return JSON.stringify(template, null, 2);
 }
 
 function generateVNetResource(vnet: VNet): unknown {
+  // Use VNet's specific region if set, otherwise fall back to parameter
+  const location = vnet.region ? vnet.region : "[parameters('defaultLocation')]";
+  const locationComment = vnet.region ? getRegionDisplayName(vnet.region) : 'Using default location';
+
   return {
     type: 'Microsoft.Network/virtualNetworks',
     apiVersion: '2023-09-01',
     name: vnet.name,
-    location: "[parameters('location')]",
+    location: location,
+    metadata: {
+      _comment: `Region: ${locationComment}`,
+    },
     properties: {
       addressSpace: {
         addressPrefixes: [vnet.addressSpace],

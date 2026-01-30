@@ -1,6 +1,7 @@
 // Bicep Template Generator
 
 import { Project, VNet, Subnet } from '@/types';
+import { getRegionDisplayName } from '@/lib/azure-regions';
 
 export function generateBicepTemplate(project: Project): string {
   const lines: string[] = [];
@@ -11,10 +12,10 @@ export function generateBicepTemplate(project: Project): string {
   lines.push(`// Generated at: ${new Date().toISOString()}`);
   lines.push('');
 
-  // Parameters
+  // Parameters - default location as fallback
   lines.push('// Parameters');
-  lines.push("@description('Location for all resources')");
-  lines.push('param location string = resourceGroup().location');
+  lines.push("@description('Default location for resources (used when VNet region not specified)')");
+  lines.push('param defaultLocation string = resourceGroup().location');
   lines.push('');
 
   // Generate VNets
@@ -30,6 +31,7 @@ export function generateBicepTemplate(project: Project): string {
   project.vnets.forEach(vnet => {
     const safeName = sanitizeName(vnet.name);
     lines.push(`output ${safeName}Id string = ${safeName}.id`);
+    lines.push(`output ${safeName}Location string = ${safeName}.location`);
   });
 
   return lines.join('\n');
@@ -43,9 +45,22 @@ function generateVNetBicep(vnet: VNet): string[] {
   if (vnet.description) {
     lines.push(`// ${vnet.description}`);
   }
+
+  // Add region comment if specified
+  if (vnet.region) {
+    lines.push(`// Region: ${getRegionDisplayName(vnet.region)} (${vnet.region})`);
+  }
+
   lines.push(`resource ${safeName} 'Microsoft.Network/virtualNetworks@2023-09-01' = {`);
   lines.push(`  name: '${vnet.name}'`);
-  lines.push('  location: location');
+
+  // Use VNet's specific region if set, otherwise use default parameter
+  if (vnet.region) {
+    lines.push(`  location: '${vnet.region}'`);
+  } else {
+    lines.push('  location: defaultLocation');
+  }
+
   lines.push('  properties: {');
   lines.push('    addressSpace: {');
   lines.push('      addressPrefixes: [');

@@ -85,13 +85,19 @@ export function createProject(name: string, description: string = ''): Project {
 /**
  * Create a new VNet
  */
-export function createVNet(name: string, addressSpace: string, description: string = ''): VNet {
+export function createVNet(
+  name: string,
+  addressSpace: string,
+  description: string = '',
+  region: string = 'eastus'
+): VNet {
   const now = new Date().toISOString();
   return {
     id: generateId(),
     name,
     description,
     addressSpace,
+    region,
     subnets: [],
     createdAt: now,
     updatedAt: now,

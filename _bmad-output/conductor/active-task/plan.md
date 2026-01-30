@@ -1,93 +1,53 @@
-# Task Plan: Testing & Quality Infrastructure
+# Task Plan: Azure Region Selection for VNets
 
 ## Goal
-Implement comprehensive testing and quality infrastructure for the Azure Virtual Network Planner Next.js app
+Add Azure region selection for VNets with grouped picker and export integration
 
 ## Context
 - **App Location:** `/app`
-- **Framework:** Next.js 16.1.6, React 19.2.3
-- **Language:** TypeScript
-- **Current State:** ✅ **COMPLETE** - Fully tested with quality tooling
+- **Framework:** Next.js, React 19, TypeScript
+- **Current State:** ✅ COMPLETE
 
 ## Decomposed Steps
 
-### Phase 1: Testing Foundation ✅
-- [x] 1.1 Install Vitest + React Testing Library + testing dependencies
-- [x] 1.2 Configure Vitest for Next.js (vitest.config.ts, setup files)
-- [x] 1.3 Configure TypeScript for tests
+### Phase 1: Data & Types
+- [x] 1.1 Create Azure regions data file with all regions grouped by geography
+- [x] 1.2 Update `VNet` type to include `region` field
 
-### Phase 2: Unit Tests - Utility Functions ✅
-- [x] 2.1 Test `lib/cidr.ts` - CIDR math functions (80 tests)
-- [x] 2.2 Test `lib/storage.ts` - Local storage operations (33 tests)
-- [x] 2.3 Test `lib/export-arm.ts` - ARM template export (9 tests)
-- [x] 2.4 Test `lib/export-bicep.ts` - Bicep export (11 tests)
-- [x] 2.5 Test `lib/export-terraform.ts` - Terraform export (13 tests)
-- [x] 2.6 Test `lib/utils.ts` - Utility functions (8 tests)
+### Phase 2: UI Components  
+- [x] 2.1 Create `RegionPicker` component (grouped combobox)
+- [x] 2.2 Update `project-workspace.tsx` to include region selection in dialogs
 
-### Phase 3: Unit Tests - React Components ✅
-- [x] 3.1 Test `context/app-context.tsx` - State management (16 tests)
-- [x] 3.2 Test UI components - Button component (18 tests)
-- [ ] 3.3 Test domain components (vnet-editor, subnet-editor) - *Future work*
+### Phase 3: State & Logic
+- [x] 3.1 Update `AppContext` to handle region in VNet CRUD
+- [x] 3.2 Handle migration for existing VNets (default to East US)
 
-### Phase 4: Code Quality Tools ✅
-- [x] 4.1 Enhance ESLint config with stricter rules
-- [x] 4.2 Add Prettier for code formatting
-- [x] 4.3 Configure Husky + lint-staged for pre-commit hooks
+### Phase 4: Export Integration
+- [x] 4.1 Update `export-arm.ts` to use VNet-specific region
+- [x] 4.2 Update `export-bicep.ts` to use VNet-specific region
+- [x] 4.3 Update `export-terraform.ts` to use VNet-specific region
 
-### Phase 5: CI/CD Integration ✅
-- [x] 5.1 Create GitHub Actions workflow for tests
-- [x] 5.2 Add test coverage reporting
-- [x] 5.3 Add quality gates (per-file coverage thresholds)
-- [x] 5.4 Publish test results as PR comments/checks
-
-## Final Results 🎯
-
-### Test Summary
-| Category | Tests | Status |
-|----------|-------|--------|
-| CIDR Utilities | 80 | ✅ Pass |
-| Storage Utilities | 33 | ✅ Pass |
-| ARM Export | 9 | ✅ Pass |
-| Bicep Export | 11 | ✅ Pass |
-| Terraform Export | 13 | ✅ Pass |
-| Utils | 8 | ✅ Pass |
-| AppContext | 16 | ✅ Pass |
-| Button Component | 18 | ✅ Pass |
-| **TOTAL** | **188** | ✅ **All Pass** |
-
-### Coverage (Tested Files)
-| File | Statements | Branches | Functions | Lines |
-|------|------------|----------|-----------|-------|
-| cidr.ts | 98.37% | 96.77% | 100% | 100% |
-| storage.ts | 87.64% | 65.11% | 100% | 94.44% |
-| export-arm.ts | 98.63% | 85.71% | 100% | 98.59% |
-| utils.ts | 100% | 100% | 100% | 100% |
-| app-context.tsx | 66.97% | 33.33% | 71.79% | 74.07% |
-
-### Tools Installed
-- Vitest v4.0.18 (test runner)
-- @testing-library/react (component testing)
-- happy-dom (DOM environment)
-- Prettier (code formatting)
-- Husky + lint-staged (pre-commit hooks)
-
-### Scripts Added
-```json
-{
-  "test": "vitest",
-  "test:run": "vitest run",
-  "test:coverage": "vitest run --coverage",
-  "format": "prettier --write .",
-  "format:check": "prettier --check .",
-  "validate": "npm run lint && npm run format:check && npm run test:run"
-}
-```
+### Phase 5: Testing
+- [x] 5.1 Add/update tests for region functionality (all 188 tests passing)
 
 ## Specialist Assignments
 | Phase | Specialist | Status |
 |-------|------------|--------|
-| Phase 1 | Sentinel 🧪 | ✅ Complete |
-| Phase 2 | Sentinel 🧪 | ✅ Complete |
-| Phase 3 | Sentinel 🧪 | ✅ Complete |
-| Phase 4 | Sentinel 🧪 | ✅ Complete |
-| Phase 5 | Sentinel 🧪 | ✅ Complete |
+| Phase 1-4 | Conductor 🎼 | ✅ Complete |
+| Phase 5 | Conductor 🎼 | ✅ Complete |
+
+## Files Created/Modified
+
+### New Files
+- `app/src/lib/azure-regions.ts` - Azure regions data (70+ regions grouped by geography)
+- `app/src/components/region-picker.tsx` - Grouped region picker component
+
+### Modified Files
+- `app/src/types/index.ts` - Added `region` field to VNet interface
+- `app/src/components/project-workspace.tsx` - Added RegionPicker to Create/Edit VNet dialogs
+- `app/src/lib/storage.ts` - Updated `createVNet` to accept region parameter
+- `app/src/context/app-context.tsx` - Updated `createNewVNet` signature
+- `app/src/lib/export-arm.ts` - Uses VNet-specific region with fallback
+- `app/src/lib/export-bicep.ts` - Uses VNet-specific region with fallback
+- `app/src/lib/export-terraform.ts` - Uses VNet-specific region with fallback
+- Multiple test files - Added region property to VNet fixtures

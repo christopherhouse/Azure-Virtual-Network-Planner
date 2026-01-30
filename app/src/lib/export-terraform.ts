@@ -1,6 +1,7 @@
 // Terraform Template Generator
 
 import { Project, VNet, Subnet } from '@/types';
+import { getRegionDisplayName } from '@/lib/azure-regions';
 
 export function generateTerraformTemplate(project: Project): string {
   const lines: string[] = [];
@@ -35,9 +36,9 @@ export function generateTerraformTemplate(project: Project): string {
   lines.push('  description = "Name of the resource group"');
   lines.push('}');
   lines.push('');
-  lines.push('variable "location" {');
+  lines.push('variable "default_location" {');
   lines.push('  type        = string');
-  lines.push('  description = "Azure region for resources"');
+  lines.push('  description = "Default Azure region for resources (used when VNet region not specified)"');
   lines.push('  default     = "eastus"');
   lines.push('}');
   lines.push('');
@@ -66,6 +67,11 @@ export function generateTerraformTemplate(project: Project): string {
     lines.push(`  description = "ID of the ${vnet.name} virtual network"`);
     lines.push('}');
     lines.push('');
+    lines.push(`output "${safeName}_location" {`);
+    lines.push(`  value       = azurerm_virtual_network.${safeName}.location`);
+    lines.push(`  description = "Location of the ${vnet.name} virtual network"`);
+    lines.push('}');
+    lines.push('');
   });
 
   return lines.join('\n');
@@ -79,9 +85,21 @@ function generateVNetTerraform(vnet: VNet): string[] {
   if (vnet.description) {
     lines.push(`# ${vnet.description}`);
   }
+  // Add region comment if specified
+  if (vnet.region) {
+    lines.push(`# Region: ${getRegionDisplayName(vnet.region)} (${vnet.region})`);
+  }
+
   lines.push(`resource "azurerm_virtual_network" "${safeName}" {`);
   lines.push(`  name                = "${vnet.name}"`);
-  lines.push('  location            = data.azurerm_resource_group.main.location');
+
+  // Use VNet's specific region if set, otherwise use default variable
+  if (vnet.region) {
+    lines.push(`  location            = "${vnet.region}"`);
+  } else {
+    lines.push('  location            = var.default_location');
+  }
+
   lines.push('  resource_group_name = data.azurerm_resource_group.main.name');
   lines.push(`  address_space       = ["${vnet.addressSpace}"]`);
   lines.push('}');

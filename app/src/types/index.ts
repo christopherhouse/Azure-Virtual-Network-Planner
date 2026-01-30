@@ -45,6 +45,7 @@ export interface VNet {
   name: string;
   description: string;
   addressSpace: string; // CIDR notation (e.g., "10.0.0.0/16")
+  region: string; // Azure region programmatic name (e.g., "eastus")
   subnets: Subnet[];
   createdAt: string;
   updatedAt: string;

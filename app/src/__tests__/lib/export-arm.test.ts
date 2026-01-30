@@ -34,9 +34,9 @@ describe('ARM Template Generator', () => {
       const template = generateARMTemplate(project);
       const parsed = JSON.parse(template);
 
-      expect(parsed.parameters.location).toBeDefined();
-      expect(parsed.parameters.location.type).toBe('string');
-      expect(parsed.parameters.location.defaultValue).toBe('[resourceGroup().location]');
+      expect(parsed.parameters.defaultLocation).toBeDefined();
+      expect(parsed.parameters.defaultLocation.type).toBe('string');
+      expect(parsed.parameters.defaultLocation.defaultValue).toBe('[resourceGroup().location]');
     });
 
     it('should generate VNet resource', () => {
@@ -47,6 +47,7 @@ describe('ARM Template Generator', () => {
             name: 'my-vnet',
             description: 'Test VNet',
             addressSpace: '10.0.0.0/16',
+            region: 'eastus',
             subnets: [],
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
@@ -71,6 +72,7 @@ describe('ARM Template Generator', () => {
             name: 'my-vnet',
             description: '',
             addressSpace: '10.0.0.0/16',
+            region: 'eastus',
             subnets: [
               {
                 id: 'subnet-1',
@@ -109,6 +111,7 @@ describe('ARM Template Generator', () => {
             name: 'my-vnet',
             description: '',
             addressSpace: '10.0.0.0/16',
+            region: 'eastus',
             subnets: [
               {
                 id: 'subnet-1',
@@ -153,6 +156,7 @@ describe('ARM Template Generator', () => {
             name: 'my-vnet',
             description: '',
             addressSpace: '10.0.0.0/16',
+            region: 'eastus',
             subnets: [
               {
                 id: 'subnet-1',
@@ -204,6 +208,7 @@ describe('ARM Template Generator', () => {
             name: 'my-vnet',
             description: '',
             addressSpace: '10.0.0.0/16',
+            region: 'eastus',
             subnets: [],
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
@@ -226,6 +231,7 @@ describe('ARM Template Generator', () => {
             name: 'vnet-prod',
             description: '',
             addressSpace: '10.0.0.0/16',
+            region: 'eastus',
             subnets: [],
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
@@ -235,6 +241,7 @@ describe('ARM Template Generator', () => {
             name: 'vnet-dev',
             description: '',
             addressSpace: '10.1.0.0/16',
+            region: 'eastus',
             subnets: [],
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
@@ -258,6 +265,7 @@ describe('ARM Template Generator', () => {
             name: 'complex-vnet',
             description: 'A complex VNet with special characters',
             addressSpace: '10.0.0.0/16',
+            region: 'eastus',
             subnets: [
               {
                 id: 'subnet-1',

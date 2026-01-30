@@ -40,7 +40,8 @@ interface AppContextType {
     projectId: string,
     name: string,
     addressSpace: string,
-    description?: string
+    description?: string,
+    region?: string
   ) => VNet;
   updateVNetDetails: (projectId: string, vnetId: string, updates: Partial<VNet>) => void;
   removeVNet: (projectId: string, vnetId: string) => void;
@@ -127,8 +128,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // VNet operations - now auto-creates initial subnet covering entire address space
   const createNewVNet = useCallback(
-    (projectId: string, name: string, addressSpace: string, description: string = ''): VNet => {
-      const vnet = createVNet(name, addressSpace, description);
+    (
+      projectId: string,
+      name: string,
+      addressSpace: string,
+      description: string = '',
+      region: string = 'eastus'
+    ): VNet => {
+      const vnet = createVNet(name, addressSpace, description, region);
       // Auto-create initial subnet covering entire address space
       const initialSubnet = createSubnet(
         'Unallocated',
