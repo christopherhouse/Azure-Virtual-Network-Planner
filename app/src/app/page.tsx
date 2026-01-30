@@ -4,6 +4,7 @@ import { useApp } from '@/context/app-context';
 import { ProjectList } from '@/components/project-list';
 import { ProjectWorkspace } from '@/components/project-workspace';
 import { Header } from '@/components/header';
+import { Footer } from '@/components/footer';
 
 export default function Home() {
   const { activeProject } = useApp();
@@ -46,6 +47,7 @@ export default function Home() {
           <li>Generating Infrastructure as Code for network deployments</li>
         </ul>
       </footer>
+      <Footer />
     </div>
   );
 }
