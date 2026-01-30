@@ -6,9 +6,10 @@ import { useApp } from '@/context/app-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Merge, Network, Zap, Server, Shield } from 'lucide-react';
+import { Merge, Network, Zap, Server, Shield, MapPin } from 'lucide-react';
 import { InlineSubnetRow } from './inline-subnet-row';
 import { getCIDRInfo } from '@/lib/cidr';
+import { getRegionDisplayName } from '@/lib/azure-regions';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -90,6 +91,12 @@ export function VNetEditor({ projectId, vnet }: VNetEditorProps) {
                 <Badge variant="outline" className="badge-cyan border font-mono">
                   {vnet.addressSpace}
                 </Badge>
+                {vnet.region && (
+                  <Badge variant="secondary" className="gap-1">
+                    <MapPin className="h-3 w-3" />
+                    {getRegionDisplayName(vnet.region)}
+                  </Badge>
+                )}
               </CardTitle>
               {vnet.description && (
                 <CardDescription className="mt-1 ml-12">{vnet.description}</CardDescription>

@@ -27,7 +27,10 @@ import {
 import { Plus, Network, MoreVertical, Trash2, Edit, Download } from 'lucide-react';
 import { VNetEditor } from './vnet-editor';
 import { ExportDialog } from './export-dialog';
+import { RegionPicker } from './region-picker';
+import { getRegionDisplayName } from '@/lib/azure-regions';
 import { validateCIDR, getCIDRInfo } from '@/lib/cidr';
+import { DEFAULT_REGION } from '@/lib/azure-regions';
 
 interface ProjectWorkspaceProps {
   project: Project;
@@ -43,6 +46,7 @@ export function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [addressSpace, setAddressSpace] = useState('');
+  const [region, setRegion] = useState(DEFAULT_REGION);
   const [addressError, setAddressError] = useState<string | null>(null);
 
   const handleAddressChange = (value: string) => {
@@ -57,7 +61,13 @@ export function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
 
   const handleCreate = () => {
     if (name.trim() && addressSpace.trim() && !addressError) {
-      const vnet = createNewVNet(project.id, name.trim(), addressSpace.trim(), description.trim());
+      const vnet = createNewVNet(
+        project.id,
+        name.trim(),
+        addressSpace.trim(),
+        description.trim(),
+        region
+      );
       setActiveVNetId(vnet.id);
       resetForm();
       setNewVNetOpen(false);
@@ -70,6 +80,7 @@ export function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
       setName(vnet.name);
       setDescription(vnet.description);
       setAddressSpace(vnet.addressSpace);
+      setRegion(vnet.region || DEFAULT_REGION);
       setEditVNetId(vnetId);
     }
   };
@@ -80,6 +91,7 @@ export function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
         name: name.trim(),
         description: description.trim(),
         addressSpace: addressSpace.trim(),
+        region: region,
       });
       resetForm();
       setEditVNetId(null);
@@ -99,6 +111,7 @@ export function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
     setName('');
     setDescription('');
     setAddressSpace('');
+    setRegion(DEFAULT_REGION);
     setAddressError(null);
   };
 
@@ -186,6 +199,10 @@ export function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
                         </div>
                       );
                     })()}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="vnet-region">Azure Region</Label>
+                  <RegionPicker value={region} onValueChange={setRegion} className="w-full" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="vnet-description">Description (optional)</Label>
@@ -327,6 +344,10 @@ export function ProjectWorkspace({ project }: ProjectWorkspaceProps) {
                     </div>
                   );
                 })()}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-vnet-region">Azure Region</Label>
+              <RegionPicker value={region} onValueChange={setRegion} className="w-full" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-vnet-description">Description (optional)</Label>

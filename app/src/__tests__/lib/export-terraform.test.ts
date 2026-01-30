@@ -46,7 +46,7 @@ describe('Terraform Template Generator', () => {
       const template = generateTerraformTemplate(project);
 
       expect(template).toContain('variable "resource_group_name"');
-      expect(template).toContain('variable "location"');
+      expect(template).toContain('variable "default_location"');
       expect(template).toContain('default     = "eastus"');
     });
 
@@ -66,6 +66,7 @@ describe('Terraform Template Generator', () => {
             name: 'my-vnet',
             description: 'Production VNet',
             addressSpace: '10.0.0.0/16',
+            region: 'eastus',
             subnets: [],
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
@@ -90,6 +91,7 @@ describe('Terraform Template Generator', () => {
             name: 'my-vnet',
             description: '',
             addressSpace: '10.0.0.0/16',
+            region: 'eastus',
             subnets: [
               {
                 id: 'subnet-1',
@@ -129,6 +131,7 @@ describe('Terraform Template Generator', () => {
             name: 'my-vnet',
             description: '',
             addressSpace: '10.0.0.0/16',
+            region: 'eastus',
             subnets: [
               {
                 id: 'subnet-1',
@@ -171,6 +174,7 @@ describe('Terraform Template Generator', () => {
             name: 'my-vnet',
             description: '',
             addressSpace: '10.0.0.0/16',
+            region: 'eastus',
             subnets: [
               {
                 id: 'subnet-1',
@@ -218,6 +222,7 @@ describe('Terraform Template Generator', () => {
             name: 'my-vnet',
             description: '',
             addressSpace: '10.0.0.0/16',
+            region: 'eastus',
             subnets: [],
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
@@ -241,6 +246,7 @@ describe('Terraform Template Generator', () => {
             name: 'My-Complex-VNet_Name',
             description: '',
             addressSpace: '10.0.0.0/16',
+            region: 'eastus',
             subnets: [],
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
@@ -264,6 +270,7 @@ describe('Terraform Template Generator', () => {
             name: 'vnet-prod',
             description: '',
             addressSpace: '10.0.0.0/16',
+            region: 'eastus',
             subnets: [
               {
                 id: 'subnet-1',
@@ -287,6 +294,7 @@ describe('Terraform Template Generator', () => {
             name: 'vnet-dev',
             description: '',
             addressSpace: '10.1.0.0/16',
+            region: 'eastus',
             subnets: [
               {
                 id: 'subnet-2',

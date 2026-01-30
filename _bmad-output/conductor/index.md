@@ -5,7 +5,7 @@
 | active-task/plan.md | in-progress | conductor |
 
 ## Task Summary
-**Goal:** Implement comprehensive testing and quality infrastructure for the Azure Virtual Network Planner Next.js app
+**Goal:** Add Azure region selection for VNets with grouped picker and export integration
 
 **Started:** 2026-01-29
-**Primary Specialist:** Sentinel 🧪
+**Primary Specialist:** Conductor 🎼
