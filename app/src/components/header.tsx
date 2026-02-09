@@ -2,9 +2,14 @@
 
 import { useApp } from '@/context/app-context';
 import { Button } from '@/components/ui/button';
-import { Network, ArrowLeft, Sparkles } from 'lucide-react';
+import { Network, ArrowLeft, Sparkles, ChevronUp } from 'lucide-react';
 
-export function Header() {
+interface HeaderProps {
+  showExpandHero?: boolean;
+  onExpandHero?: () => void;
+}
+
+export function Header({ showExpandHero, onExpandHero }: HeaderProps) {
   const { activeProject, setActiveProject } = useApp();
 
   return (
@@ -34,16 +39,40 @@ export function Header() {
                 Azure VNet Planner
                 <Sparkles className="h-4 w-4 text-[oklch(0.75_0.15_85)]" />
               </h1>
-              <p className="text-xs text-muted-foreground">Visual Network Design Tool</p>
+              <p className="text-xs text-muted-foreground">
+                {showExpandHero ? (
+                  <>Free Tool • Subnet Calculator • IaC Export</>
+                ) : (
+                  <>Visual Network Design Tool</>
+                )}
+              </p>
             </div>
           </div>
         </div>
-        {activeProject && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 border border-border/50">
-            <span className="text-xs text-muted-foreground uppercase tracking-wider">Project</span>
-            <span className="font-semibold text-primary">{activeProject.name}</span>
-          </div>
-        )}
+        
+        {/* Right side content */}
+        <div className="flex items-center gap-3">
+          {/* Expand hero button - shown when hero is collapsed and not in a project */}
+          {showExpandHero && onExpandHero && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onExpandHero}
+              className="gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10"
+            >
+              <span className="hidden sm:inline text-xs">Learn More</span>
+              <ChevronUp className="h-4 w-4" />
+            </Button>
+          )}
+          
+          {/* Active project indicator */}
+          {activeProject && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 border border-border/50">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider">Project</span>
+              <span className="font-semibold text-primary">{activeProject.name}</span>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

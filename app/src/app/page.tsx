@@ -8,7 +8,6 @@ import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { HeroSection } from '@/components/hero-section';
 import { FeatureCards } from '@/components/feature-cards';
-import { SlimBanner } from '@/components/slim-banner';
 
 const HERO_COLLAPSED_KEY = 'azvnet-hero-collapsed';
 
@@ -47,24 +46,22 @@ export default function Home() {
 
   // Don't render hero section during SSR to avoid hydration mismatch
   const showHeroSection = heroCollapsed === false;
-  const showSlimBanner = heroCollapsed === true;
+  const showExpandInHeader = heroCollapsed === true && !activeProject;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header />
+      <Header 
+        showExpandHero={showExpandInHeader} 
+        onExpandHero={handleExpand} 
+      />
 
-      {/* Hero Section OR Slim Banner - only show on project list view */}
-      {!activeProject && heroCollapsed !== null && (
+      {/* Hero Section - only show on project list view when not collapsed */}
+      {!activeProject && heroCollapsed !== null && showHeroSection && (
         <>
-          {showHeroSection && (
-            <>
-              <HeroSection onGetStarted={handleGetStarted} onCollapse={handleCollapse} />
-              <div className="container mx-auto px-4">
-                <FeatureCards />
-              </div>
-            </>
-          )}
-          {showSlimBanner && <SlimBanner onExpand={handleExpand} />}
+          <HeroSection onGetStarted={handleGetStarted} onCollapse={handleCollapse} />
+          <div className="container mx-auto px-4">
+            <FeatureCards />
+          </div>
         </>
       )}
 
@@ -77,7 +74,7 @@ export default function Home() {
       </main>
 
       {/* SEO Content - Visible in collapsed mode for returning users */}
-      {!activeProject && showSlimBanner && (
+      {!activeProject && showExpandInHeader && (
         <section className="container mx-auto px-4 py-8 border-t border-border/30">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-xl font-semibold gradient-text mb-4">
