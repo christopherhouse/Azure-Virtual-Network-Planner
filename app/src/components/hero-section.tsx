@@ -15,7 +15,7 @@ export function HeroSection({ onGetStarted, onCollapse }: HeroSectionProps) {
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl" />
-      
+
       <div className="relative px-4 py-16 md:py-24 text-center">
         {/* Main headline */}
         <div className="flex items-center justify-center gap-3 mb-6">
@@ -34,19 +34,15 @@ export function HeroSection({ onGetStarted, onCollapse }: HeroSectionProps) {
         </h1>
 
         <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-          Design Azure VNets, calculate subnet CIDR blocks, configure delegations, 
-          and export to <span className="text-primary font-medium">ARM</span>, 
-          <span className="text-primary font-medium"> Bicep</span>, or 
+          Design Azure VNets, calculate subnet CIDR blocks, configure delegations, and export to{' '}
+          <span className="text-primary font-medium">ARM</span>,
+          <span className="text-primary font-medium"> Bicep</span>, or
           <span className="text-primary font-medium"> Terraform</span> — all for free.
         </p>
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-          <Button 
-            size="lg" 
-            className="gap-2 btn-glow text-lg px-8 py-6"
-            onClick={onGetStarted}
-          >
+          <Button size="lg" className="gap-2 btn-glow text-lg px-8 py-6" onClick={onGetStarted}>
             <Sparkles className="h-5 w-5" />
             Start Planning
           </Button>

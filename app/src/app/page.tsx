@@ -50,10 +50,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header 
-        showExpandHero={showExpandInHeader} 
-        onExpandHero={handleExpand} 
-      />
+      <Header showExpandHero={showExpandInHeader} onExpandHero={handleExpand} />
 
       {/* Hero Section - only show on project list view when not collapsed */}
       {!activeProject && heroCollapsed !== null && showHeroSection && (
@@ -77,14 +74,12 @@ export default function Home() {
       {!activeProject && showExpandInHeader && (
         <section className="container mx-auto px-4 py-8 border-t border-border/30">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-xl font-semibold gradient-text mb-4">
-              About Azure VNet Planner
-            </h2>
+            <h2 className="text-xl font-semibold gradient-text mb-4">About Azure VNet Planner</h2>
             <p className="text-muted-foreground mb-6">
-              Azure VNet Planner is a free online tool for Azure network engineers and cloud architects.
-              Plan your Azure Virtual Network infrastructure, calculate subnet CIDR blocks, configure
-              subnet delegations and service endpoints, and export your designs to ARM templates, Bicep
-              templates, or Terraform configurations.
+              Azure VNet Planner is a free online tool for Azure network engineers and cloud
+              architects. Plan your Azure Virtual Network infrastructure, calculate subnet CIDR
+              blocks, configure subnet delegations and service endpoints, and export your designs to
+              ARM templates, Bicep templates, or Terraform configurations.
             </p>
             <div className="grid md:grid-cols-2 gap-6 text-sm">
               <div>

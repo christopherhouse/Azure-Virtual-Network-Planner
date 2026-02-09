@@ -49,7 +49,7 @@ export function Header({ showExpandHero, onExpandHero }: HeaderProps) {
             </div>
           </div>
         </div>
-        
+
         {/* Right side content */}
         <div className="flex items-center gap-3">
           {/* Expand hero button - shown when hero is collapsed and not in a project */}
@@ -64,11 +64,13 @@ export function Header({ showExpandHero, onExpandHero }: HeaderProps) {
               <ChevronUp className="h-4 w-4" />
             </Button>
           )}
-          
+
           {/* Active project indicator */}
           {activeProject && (
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 border border-border/50">
-              <span className="text-xs text-muted-foreground uppercase tracking-wider">Project</span>
+              <span className="text-xs text-muted-foreground uppercase tracking-wider">
+                Project
+              </span>
               <span className="font-semibold text-primary">{activeProject.name}</span>
             </div>
           )}

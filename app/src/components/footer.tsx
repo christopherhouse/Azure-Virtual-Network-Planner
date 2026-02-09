@@ -27,11 +27,7 @@ export function Footer() {
           className="hover:opacity-80 transition-opacity"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={WORKFLOW_BADGE_URL}
-            alt="Build Status"
-            className="h-5"
-          />
+          <img src={WORKFLOW_BADGE_URL} alt="Build Status" className="h-5" />
         </a>
       </div>
     </footer>
