@@ -28,7 +28,6 @@ import { Plus, Network, MoreVertical, Trash2, Edit, Download } from 'lucide-reac
 import { VNetEditor } from './vnet-editor';
 import { ExportDialog } from './export-dialog';
 import { RegionPicker } from './region-picker';
-import { getRegionDisplayName } from '@/lib/azure-regions';
 import { validateCIDR, getCIDRInfo } from '@/lib/cidr';
 import { DEFAULT_REGION } from '@/lib/azure-regions';
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useSyncExternalStore } from 'react';
 import { useApp } from '@/context/app-context';
 import { ProjectList } from '@/components/project-list';
 import { ProjectWorkspace } from '@/components/project-workspace';
@@ -11,31 +11,41 @@ import { FeatureCards } from '@/components/feature-cards';
 
 const HERO_COLLAPSED_KEY = 'azvnet-hero-collapsed';
 
-export default function Home() {
-  const { state, activeProject } = useApp();
-  const [heroCollapsed, setHeroCollapsed] = useState<boolean | null>(null);
+// Custom hook to sync with localStorage using React 18+ pattern
+function useHeroCollapsed(hasProjects: boolean) {
+  const subscribe = useCallback((callback: () => void) => {
+    window.addEventListener('storage', callback);
+    return () => window.removeEventListener('storage', callback);
+  }, []);
 
-  // Determine if hero should be collapsed
-  // - If user has projects, default to collapsed
-  // - If user manually toggled, respect that preference
-  useEffect(() => {
+  const getSnapshot = useCallback(() => {
     const stored = localStorage.getItem(HERO_COLLAPSED_KEY);
     if (stored !== null) {
-      setHeroCollapsed(stored === 'true');
-    } else {
-      // Default: collapsed if user has projects
-      setHeroCollapsed(state.projects.length > 0);
+      return stored === 'true';
     }
-  }, [state.projects.length]);
+    // Default: collapsed if user has projects
+    return hasProjects;
+  }, [hasProjects]);
+
+  // Return null during SSR
+  const getServerSnapshot = useCallback(() => null, []);
+
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
+
+export default function Home() {
+  const { state, activeProject } = useApp();
+  const heroCollapsed = useHeroCollapsed(state.projects.length > 0);
+  const [, forceUpdate] = useState(0);
 
   const handleCollapse = useCallback(() => {
-    setHeroCollapsed(true);
     localStorage.setItem(HERO_COLLAPSED_KEY, 'true');
+    forceUpdate(n => n + 1); // Trigger re-render after localStorage update
   }, []);
 
   const handleExpand = useCallback(() => {
-    setHeroCollapsed(false);
     localStorage.setItem(HERO_COLLAPSED_KEY, 'false');
+    forceUpdate(n => n + 1); // Trigger re-render after localStorage update
   }, []);
 
   const handleGetStarted = useCallback(() => {
