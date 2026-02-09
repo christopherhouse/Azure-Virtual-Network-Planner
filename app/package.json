@@ -1,6 +1,6 @@
 {
   "name": "app",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -49,6 +49,7 @@
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
+    "@microsoft/eslint-formatter-sarif": "^3.1.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
