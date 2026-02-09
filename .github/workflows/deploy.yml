@@ -41,10 +41,10 @@ permissions:
 
 jobs:
   # ===========================================================================
-  # Job 1: Build and Push to GHCR
+  # Job 1a: Build Web and Push to GHCR
   # ===========================================================================
-  build:
-    name: 1. Build & Push to GHCR
+  build-web:
+    name: 1a. Build Web & Push to GHCR
     runs-on: ubuntu-latest
 
     outputs:
@@ -94,18 +94,80 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: Dockerfile.web
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+  # ===========================================================================
+  # Job 1b: Build API and Push to GHCR
+  # ===========================================================================
+  build-api:
+    name: 1b. Build API & Push to GHCR
+    runs-on: ubuntu-latest
+
+    outputs:
+      image-tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
+      short-sha: ${{ steps.version.outputs.short_sha }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Read VERSION and determine tags
+        id: version
+        run: |
+          VERSION=$(cat VERSION | tr -d '[:space:]')
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "tag=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          
+          echo "📦 Version: ${VERSION}"
+          echo "🔖 SHA: ${SHORT_SHA}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api
+          tags: |
+            type=sha,prefix=
+            type=raw,value=v${{ steps.version.outputs.version }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.api
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
 
   # ===========================================================================
   # Job 2: Deploy Core Infrastructure (optional)
   # ===========================================================================
   deploy-infra-dev:
     name: 2a. Deploy Infra (Dev)
-    needs: [build]
+    needs: [build-web, build-api]
     runs-on: ubuntu-latest
     if: |
       github.event_name == 'push' ||
@@ -134,10 +196,12 @@ jobs:
 
   deploy-infra-prod:
     name: 2b. Deploy Infra (Prod)
-    needs: [build, deploy-app-dev]
+    needs: [build-web, build-api, deploy-web-dev, deploy-api-dev]
     runs-on: ubuntu-latest
     if: |
-      always() && !cancelled() && needs.deploy-app-dev.result == 'success' &&
+      always() && !cancelled() && 
+      needs.deploy-web-dev.result == 'success' && 
+      needs.deploy-api-dev.result == 'success' &&
       github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_prod == 'true'
     environment: production
 
@@ -162,15 +226,15 @@ jobs:
           failOnStdErr: false
 
   # ===========================================================================
-  # Job 3: Import to ACR (Dev)
+  # Job 3a: Import Web to ACR (Dev)
   # ===========================================================================
-  import-acr-dev:
-    name: 3a. Import to ACR (Dev)
-    needs: [build, deploy-infra-dev]
+  import-acr-web-dev:
+    name: 3a. Import Web to ACR (Dev)
+    needs: [build-web, deploy-infra-dev]
     runs-on: ubuntu-latest
     if: |
       always() && !cancelled() && 
-      needs.build.result == 'success' && 
+      needs.build-web.result == 'success' && 
       needs.deploy-infra-dev.result == 'success'
     environment: development
 
@@ -184,28 +248,69 @@ jobs:
 
       - name: Import image to ACR
         run: |
-          echo "🔄 Importing image from GHCR to ACR (Dev)..."
-          echo "🏷️  Version: v${{ needs.build.outputs.version }}"
-          echo "🔖 SHA: ${{ needs.build.outputs.short-sha }}"
+          echo "🔄 Importing Web image from GHCR to ACR (Dev)..."
+          echo "🏷️  Version: v${{ needs.build-web.outputs.version }}"
+          echo "🔖 SHA: ${{ needs.build-web.outputs.short-sha }}"
           IMAGE_NAME_LOWER=$(echo "${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
           az acr import \
             --name ${{ vars.ACR_NAME }} \
-            --source ${{ env.REGISTRY }}/${IMAGE_NAME_LOWER}:${{ needs.build.outputs.short-sha }} \
-            --image vnetplanner:${{ needs.build.outputs.short-sha }} \
-            --image vnetplanner:v${{ needs.build.outputs.version }} \
+            --source ${{ env.REGISTRY }}/${IMAGE_NAME_LOWER}:${{ needs.build-web.outputs.short-sha }} \
+            --image vnetplanner:${{ needs.build-web.outputs.short-sha }} \
+            --image vnetplanner:v${{ needs.build-web.outputs.version }} \
             --image vnetplanner:dev \
             --username ${{ github.actor }} \
             --password ${{ secrets.GITHUB_TOKEN }} \
             --force
-          echo "✅ Image imported to Dev ACR"
+          echo "✅ Web image imported to Dev ACR"
 
-  import-acr-prod:
-    name: 3b. Import to ACR (Prod)
-    needs: [build, deploy-infra-prod]
+  # ===========================================================================
+  # Job 3b: Import API to ACR (Dev)
+  # ===========================================================================
+  import-acr-api-dev:
+    name: 3b. Import API to ACR (Dev)
+    needs: [build-api, deploy-infra-dev]
     runs-on: ubuntu-latest
     if: |
       always() && !cancelled() && 
-      needs.build.result == 'success' && 
+      needs.build-api.result == 'success' && 
+      needs.deploy-infra-dev.result == 'success'
+    environment: development
+
+    steps:
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Import image to ACR
+        run: |
+          echo "🔄 Importing API image from GHCR to ACR (Dev)..."
+          echo "🏷️  Version: v${{ needs.build-api.outputs.version }}"
+          echo "🔖 SHA: ${{ needs.build-api.outputs.short-sha }}"
+          IMAGE_NAME_LOWER=$(echo "${{ env.IMAGE_NAME }}-api" | tr '[:upper:]' '[:lower:]')
+          az acr import \
+            --name ${{ vars.ACR_NAME }} \
+            --source ${{ env.REGISTRY }}/${IMAGE_NAME_LOWER}:${{ needs.build-api.outputs.short-sha }} \
+            --image vnetplanner-api:${{ needs.build-api.outputs.short-sha }} \
+            --image vnetplanner-api:v${{ needs.build-api.outputs.version }} \
+            --image vnetplanner-api:dev \
+            --username ${{ github.actor }} \
+            --password ${{ secrets.GITHUB_TOKEN }} \
+            --force
+          echo "✅ API image imported to Dev ACR"
+
+  # ===========================================================================
+  # Job 3c: Import Web to ACR (Prod)
+  # ===========================================================================
+  import-acr-web-prod:
+    name: 3c. Import Web to ACR (Prod)
+    needs: [build-web, deploy-infra-prod]
+    runs-on: ubuntu-latest
+    if: |
+      always() && !cancelled() && 
+      needs.build-web.result == 'success' && 
       needs.deploy-infra-prod.result == 'success'
     environment: production
 
@@ -219,30 +324,68 @@ jobs:
 
       - name: Import image to ACR
         run: |
-          echo "🔄 Importing image from GHCR to ACR (Prod)..."
-          echo "🏷️  Version: v${{ needs.build.outputs.version }}"
-          echo "🔖 SHA: ${{ needs.build.outputs.short-sha }}"
+          echo "🔄 Importing Web image from GHCR to ACR (Prod)..."
+          echo "🏷️  Version: v${{ needs.build-web.outputs.version }}"
+          echo "🔖 SHA: ${{ needs.build-web.outputs.short-sha }}"
           IMAGE_NAME_LOWER=$(echo "${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
           az acr import \
             --name ${{ vars.ACR_NAME }} \
-            --source ${{ env.REGISTRY }}/${IMAGE_NAME_LOWER}:${{ needs.build.outputs.short-sha }} \
-            --image vnetplanner:${{ needs.build.outputs.short-sha }} \
-            --image vnetplanner:v${{ needs.build.outputs.version }} \
+            --source ${{ env.REGISTRY }}/${IMAGE_NAME_LOWER}:${{ needs.build-web.outputs.short-sha }} \
+            --image vnetplanner:${{ needs.build-web.outputs.short-sha }} \
+            --image vnetplanner:v${{ needs.build-web.outputs.version }} \
             --image vnetplanner:latest \
             --username ${{ github.actor }} \
             --password ${{ secrets.GITHUB_TOKEN }} \
             --force
-          echo "✅ Image imported to Prod ACR"
+          echo "✅ Web image imported to Prod ACR"
 
   # ===========================================================================
-  # Job 4: Deploy App to Dev
+  # Job 3d: Import API to ACR (Prod)
   # ===========================================================================
-  deploy-app-dev:
-    name: 4. Deploy App (Dev)
-    needs: [build, import-acr-dev]
+  import-acr-api-prod:
+    name: 3d. Import API to ACR (Prod)
+    needs: [build-api, deploy-infra-prod]
     runs-on: ubuntu-latest
     if: |
-      always() && !cancelled() && needs.import-acr-dev.result == 'success'
+      always() && !cancelled() && 
+      needs.build-api.result == 'success' && 
+      needs.deploy-infra-prod.result == 'success'
+    environment: production
+
+    steps:
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Import image to ACR
+        run: |
+          echo "🔄 Importing API image from GHCR to ACR (Prod)..."
+          echo "🏷️  Version: v${{ needs.build-api.outputs.version }}"
+          echo "🔖 SHA: ${{ needs.build-api.outputs.short-sha }}"
+          IMAGE_NAME_LOWER=$(echo "${{ env.IMAGE_NAME }}-api" | tr '[:upper:]' '[:lower:]')
+          az acr import \
+            --name ${{ vars.ACR_NAME }} \
+            --source ${{ env.REGISTRY }}/${IMAGE_NAME_LOWER}:${{ needs.build-api.outputs.short-sha }} \
+            --image vnetplanner-api:${{ needs.build-api.outputs.short-sha }} \
+            --image vnetplanner-api:v${{ needs.build-api.outputs.version }} \
+            --image vnetplanner-api:latest \
+            --username ${{ github.actor }} \
+            --password ${{ secrets.GITHUB_TOKEN }} \
+            --force
+          echo "✅ API image imported to Prod ACR"
+
+  # ===========================================================================
+  # Job 4a: Deploy Web to Dev
+  # ===========================================================================
+  deploy-web-dev:
+    name: 4a. Deploy Web (Dev)
+    needs: [build-web, import-acr-web-dev]
+    runs-on: ubuntu-latest
+    if: |
+      always() && !cancelled() && needs.import-acr-web-dev.result == 'success'
     environment: development
 
     steps:
@@ -258,28 +401,63 @@ jobs:
 
       - name: Deploy Container App
         run: |
-          chmod +x ./infra/scripts/deploy-app.sh
-          ./infra/scripts/deploy-app.sh
+          chmod +x ./infra/scripts/deploy-web.sh
+          ./infra/scripts/deploy-web.sh
         env:
           RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
           ENVIRONMENT: dev
           ACR_NAME: ${{ vars.ACR_NAME }}
-          IMAGE_TAG: ${{ needs.build.outputs.short-sha }}
-          IMAGE_VERSION: ${{ needs.build.outputs.version }}
+          IMAGE_TAG: ${{ needs.build-web.outputs.short-sha }}
+          IMAGE_VERSION: ${{ needs.build-web.outputs.version }}
           BASE_NAME: vnetplanner
           LOCATION: eastus2
 
   # ===========================================================================
-  # Job 5: Deploy App to Prod
+  # Job 4b: Deploy API to Dev
   # ===========================================================================
-  deploy-app-prod:
-    name: 5. Deploy App (Prod)
-    needs: [build, import-acr-prod, deploy-app-dev]
+  deploy-api-dev:
+    name: 4b. Deploy API (Dev)
+    needs: [build-api, import-acr-api-dev]
+    runs-on: ubuntu-latest
+    if: |
+      always() && !cancelled() && needs.import-acr-api-dev.result == 'success'
+    environment: development
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy API Container App
+        run: |
+          chmod +x ./infra/scripts/deploy-api.sh
+          ./infra/scripts/deploy-api.sh
+        env:
+          RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
+          ENVIRONMENT: dev
+          ACR_NAME: ${{ vars.ACR_NAME }}
+          IMAGE_TAG: ${{ needs.build-api.outputs.short-sha }}
+          IMAGE_VERSION: ${{ needs.build-api.outputs.version }}
+          BASE_NAME: vnetplanner
+          LOCATION: eastus2
+
+  # ===========================================================================
+  # Job 5a: Deploy Web to Prod
+  # ===========================================================================
+  deploy-web-prod:
+    name: 5a. Deploy Web (Prod)
+    needs: [build-web, import-acr-web-prod, deploy-web-dev]
     runs-on: ubuntu-latest
     if: |
       always() && !cancelled() && 
-      needs.import-acr-prod.result == 'success' && 
-      needs.deploy-app-dev.result == 'success'
+      needs.import-acr-web-prod.result == 'success' && 
+      needs.deploy-web-dev.result == 'success'
     environment: production
 
     steps:
@@ -295,14 +473,51 @@ jobs:
 
       - name: Deploy Container App
         run: |
-          chmod +x ./infra/scripts/deploy-app.sh
-          ./infra/scripts/deploy-app.sh
+          chmod +x ./infra/scripts/deploy-web.sh
+          ./infra/scripts/deploy-web.sh
         env:
           RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
           ENVIRONMENT: prod
           ACR_NAME: ${{ vars.ACR_NAME }}
-          IMAGE_TAG: ${{ needs.build.outputs.short-sha }}
-          IMAGE_VERSION: ${{ needs.build.outputs.version }}
+          IMAGE_TAG: ${{ needs.build-web.outputs.short-sha }}
+          IMAGE_VERSION: ${{ needs.build-web.outputs.version }}
+          BASE_NAME: vnetplanner
+          LOCATION: eastus
+
+  # ===========================================================================
+  # Job 5b: Deploy API to Prod
+  # ===========================================================================
+  deploy-api-prod:
+    name: 5b. Deploy API (Prod)
+    needs: [build-api, import-acr-api-prod, deploy-api-dev]
+    runs-on: ubuntu-latest
+    if: |
+      always() && !cancelled() && 
+      needs.import-acr-api-prod.result == 'success' && 
+      needs.deploy-api-dev.result == 'success'
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy API Container App
+        run: |
+          chmod +x ./infra/scripts/deploy-api.sh
+          ./infra/scripts/deploy-api.sh
+        env:
+          RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
+          ENVIRONMENT: prod
+          ACR_NAME: ${{ vars.ACR_NAME }}
+          IMAGE_TAG: ${{ needs.build-api.outputs.short-sha }}
+          IMAGE_VERSION: ${{ needs.build-api.outputs.version }}
           BASE_NAME: vnetplanner
           LOCATION: eastus
 
@@ -311,10 +526,12 @@ jobs:
   # ===========================================================================
   create-release:
     name: 6. Create Release
-    needs: [build, deploy-app-prod]
+    needs: [build-web, build-api, deploy-web-prod, deploy-api-prod]
     runs-on: ubuntu-latest
     if: |
-      always() && !cancelled() && needs.deploy-app-prod.result == 'success' &&
+      always() && !cancelled() && 
+      needs.deploy-web-prod.result == 'success' && 
+      needs.deploy-api-prod.result == 'success' &&
       github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true'
 
     steps:
@@ -324,17 +541,21 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ needs.build.outputs.version }}
-          name: Release v${{ needs.build.outputs.version }}
+          tag_name: v${{ needs.build-web.outputs.version }}
+          name: Release v${{ needs.build-web.outputs.version }}
           body: |
-            ## 🚀 Release v${{ needs.build.outputs.version }}
+            ## 🚀 Release v${{ needs.build-web.outputs.version }}
             
             **Commit:** ${{ github.sha }}
-            **Build:** ${{ needs.build.outputs.short-sha }}
+            **Build:** ${{ needs.build-web.outputs.short-sha }}
             
-            ### Container Images
-            - GHCR: `ghcr.io/${{ github.repository }}:v${{ needs.build.outputs.version }}`
-            - ACR: `${{ vars.ACR_NAME }}.azurecr.io/vnetplanner:v${{ needs.build.outputs.version }}`
+            ### Container Images (Web)
+            - GHCR: `ghcr.io/${{ github.repository }}:v${{ needs.build-web.outputs.version }}`
+            - ACR: `${{ vars.ACR_NAME }}.azurecr.io/vnetplanner:v${{ needs.build-web.outputs.version }}`
+            
+            ### Container Images (API)
+            - GHCR: `ghcr.io/${{ github.repository }}-api:v${{ needs.build-api.outputs.version }}`
+            - ACR: `${{ vars.ACR_NAME }}.azurecr.io/vnetplanner-api:v${{ needs.build-api.outputs.version }}`
           draft: false
           prerelease: false
           generate_release_notes: true
