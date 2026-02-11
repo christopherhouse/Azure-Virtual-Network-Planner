@@ -618,11 +618,25 @@ jobs:
           fi
           echo "waf_policy_id=$WAF_POLICY_ID" >> $GITHUB_OUTPUT
           
+          # Get Log Analytics Workspace ID
+          echo "Getting Log Analytics Workspace ID..."
+          LOG_ANALYTICS_NAME="log-vnetplanner-dev"
+          LOG_ANALYTICS_ID=$(az monitor log-analytics workspace show \
+            --workspace-name "$LOG_ANALYTICS_NAME" \
+            --resource-group "${{ vars.RESOURCE_GROUP }}" \
+            --query "id" -o tsv)
+          if [ -z "$LOG_ANALYTICS_ID" ]; then
+            echo "⚠️ Warning: Failed to get Log Analytics Workspace ID (diagnostics will be skipped)"
+            LOG_ANALYTICS_ID=""
+          fi
+          echo "log_analytics_id=$LOG_ANALYTICS_ID" >> $GITHUB_OUTPUT
+          
           echo "✅ Container Apps Environment ID: $CAE_ID"
           echo "✅ CAE Location: $CAE_LOCATION"
           echo "✅ Web FQDN: $WEB_FQDN"
           echo "✅ API FQDN: $API_FQDN"
           echo "✅ WAF Policy ID: $WAF_POLICY_ID"
+          echo "✅ Log Analytics Workspace ID: $LOG_ANALYTICS_ID"
 
       - name: Generate Front Door Parameters File
         run: |
@@ -636,7 +650,8 @@ jobs:
               "webAppHostname": { "value": "${{ steps.get-endpoints.outputs.web_fqdn }}" },
               "apiAppHostname": { "value": "${{ steps.get-endpoints.outputs.api_fqdn }}" },
               "containerAppsEnvironmentId": { "value": "${{ steps.get-endpoints.outputs.cae_id }}" },
-              "wafPolicyId": { "value": "${{ steps.get-endpoints.outputs.waf_policy_id }}" }
+              "wafPolicyId": { "value": "${{ steps.get-endpoints.outputs.waf_policy_id }}" },
+              "logAnalyticsWorkspaceId": { "value": "${{ steps.get-endpoints.outputs.log_analytics_id }}" }
             }
           }
           EOF
@@ -771,11 +786,25 @@ jobs:
           fi
           echo "waf_policy_id=$WAF_POLICY_ID" >> $GITHUB_OUTPUT
           
+          # Get Log Analytics Workspace ID
+          echo "Getting Log Analytics Workspace ID..."
+          LOG_ANALYTICS_NAME="log-vnetplanner-prod"
+          LOG_ANALYTICS_ID=$(az monitor log-analytics workspace show \
+            --workspace-name "$LOG_ANALYTICS_NAME" \
+            --resource-group "${{ vars.RESOURCE_GROUP }}" \
+            --query "id" -o tsv)
+          if [ -z "$LOG_ANALYTICS_ID" ]; then
+            echo "⚠️ Warning: Failed to get Log Analytics Workspace ID (diagnostics will be skipped)"
+            LOG_ANALYTICS_ID=""
+          fi
+          echo "log_analytics_id=$LOG_ANALYTICS_ID" >> $GITHUB_OUTPUT
+          
           echo "✅ Container Apps Environment ID: $CAE_ID"
           echo "✅ CAE Location: $CAE_LOCATION"
           echo "✅ Web FQDN: $WEB_FQDN"
           echo "✅ API FQDN: $API_FQDN"
           echo "✅ WAF Policy ID: $WAF_POLICY_ID"
+          echo "✅ Log Analytics Workspace ID: $LOG_ANALYTICS_ID"
 
       - name: Generate Front Door Parameters File
         run: |
@@ -789,7 +818,8 @@ jobs:
               "webAppHostname": { "value": "${{ steps.get-endpoints.outputs.web_fqdn }}" },
               "apiAppHostname": { "value": "${{ steps.get-endpoints.outputs.api_fqdn }}" },
               "containerAppsEnvironmentId": { "value": "${{ steps.get-endpoints.outputs.cae_id }}" },
-              "wafPolicyId": { "value": "${{ steps.get-endpoints.outputs.waf_policy_id }}" }
+              "wafPolicyId": { "value": "${{ steps.get-endpoints.outputs.waf_policy_id }}" },
+              "logAnalyticsWorkspaceId": { "value": "${{ steps.get-endpoints.outputs.log_analytics_id }}" }
             }
           }
           EOF
