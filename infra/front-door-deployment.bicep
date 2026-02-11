@@ -29,6 +29,9 @@ param containerAppsEnvironmentId string
 @description('Resource ID of the WAF Policy')
 param wafPolicyId string
 
+@description('Resource ID of the Log Analytics workspace for diagnostics')
+param logAnalyticsWorkspaceId string = ''
+
 @description('Tags for all resources')
 param tags object = {}
 
@@ -54,6 +57,7 @@ module frontDoor 'modules/front-door.bicep' = {
     containerAppsEnvironmentId: containerAppsEnvironmentId
     containerAppsLocation: location
     wafPolicyId: wafPolicyId
+    logAnalyticsWorkspaceId: logAnalyticsWorkspaceId
     tags: allTags
   }
 }
