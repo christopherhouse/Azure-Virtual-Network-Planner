@@ -25,6 +25,9 @@ param containerAppsLocation string
 @description('Resource ID of the WAF policy to associate')
 param wafPolicyId string
 
+@description('Resource ID of the Log Analytics workspace for diagnostics')
+param logAnalyticsWorkspaceId string = ''
+
 @description('Tags for the resources')
 param tags object = {}
 
@@ -72,7 +75,7 @@ resource webOriginGroup 'Microsoft.Cdn/profiles/originGroups@2024-02-01' = {
       additionalLatencyInMilliseconds: 50
     }
     healthProbeSettings: {
-      probePath: '/'
+      probePath: '/healthz'
       probeRequestType: 'HEAD'
       probeProtocol: 'Https'
       probeIntervalInSeconds: 60
@@ -92,7 +95,7 @@ resource apiOriginGroup 'Microsoft.Cdn/profiles/originGroups@2024-02-01' = {
       additionalLatencyInMilliseconds: 50
     }
     healthProbeSettings: {
-      probePath: '/health'
+      probePath: '/healthz'
       probeRequestType: 'GET'
       probeProtocol: 'Https'
       probeIntervalInSeconds: 60
@@ -147,6 +150,56 @@ resource apiOrigin 'Microsoft.Cdn/profiles/originGroups/origins@2024-02-01' = {
   }
 }
 
+// Static Assets Caching Rule Set
+resource staticAssetsCacheRuleSet 'Microsoft.Cdn/profiles/ruleSets@2024-02-01' = {
+  parent: frontDoorProfile
+  name: 'StaticAssetsCaching'
+}
+
+// Static Assets Caching Rule - matches static paths and caches for 8 hours
+resource staticAssetsCacheRule 'Microsoft.Cdn/profiles/ruleSets/rules@2024-02-01' = {
+  parent: staticAssetsCacheRuleSet
+  name: 'CacheStaticAssets'
+  properties: {
+    order: 1
+    conditions: [
+      {
+        name: 'UrlPath'
+        parameters: {
+          typeName: 'DeliveryRuleUrlPathMatchConditionParameters'
+          operator: 'BeginsWith'
+          negateCondition: false
+          matchValues: [
+            '/_next/static/'
+            '/fonts/'
+            '/images/'
+            '/assets/'
+            '/public/'
+          ]
+          transforms: [
+            'Lowercase'
+          ]
+        }
+      }
+    ]
+    actions: [
+      {
+        name: 'RouteConfigurationOverride'
+        parameters: {
+          typeName: 'DeliveryRuleRouteConfigurationOverrideActionParameters'
+          cacheConfiguration: {
+            queryStringCachingBehavior: 'IgnoreQueryString'
+            cacheBehavior: 'OverrideAlways'
+            cacheDuration: '08:00:00'
+            isCompressionEnabled: 'Enabled'
+          }
+        }
+      }
+    ]
+    matchProcessingBehavior: 'Continue'
+  }
+}
+
 // Web Route
 resource webRoute 'Microsoft.Cdn/profiles/afdEndpoints/routes@2024-02-01' = {
   parent: webEndpoint
@@ -155,6 +208,11 @@ resource webRoute 'Microsoft.Cdn/profiles/afdEndpoints/routes@2024-02-01' = {
     originGroup: {
       id: webOriginGroup.id
     }
+    ruleSets: [
+      {
+        id: staticAssetsCacheRuleSet.id
+      }
+    ]
     supportedProtocols: [
       'Http'
       'Https'
@@ -169,6 +227,7 @@ resource webRoute 'Microsoft.Cdn/profiles/afdEndpoints/routes@2024-02-01' = {
   }
   dependsOn: [
     webOrigin
+    staticAssetsCacheRule
   ]
 }
 
@@ -223,6 +282,31 @@ resource securityPolicy 'Microsoft.Cdn/profiles/securityPolicies@2024-02-01' = {
         }
       ]
     }
+  }
+}
+
+// Diagnostic Settings - Send all logs and metrics to Log Analytics
+resource frontDoorDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (!empty(logAnalyticsWorkspaceId)) {
+  name: 'send-to-log-analytics'
+  scope: frontDoorProfile
+  properties: {
+    workspaceId: logAnalyticsWorkspaceId
+    logs: [
+      {
+        categoryGroup: 'allLogs'
+        enabled: true
+      }
+      {
+        categoryGroup: 'audit'
+        enabled: true
+      }
+    ]
+    metrics: [
+      {
+        category: 'AllMetrics'
+        enabled: true
+      }
+    ]
   }
 }
 

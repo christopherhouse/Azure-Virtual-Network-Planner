@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.responses import JSONResponse
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
@@ -52,6 +52,21 @@ async def health_check() -> dict[str, Any]:
         dict: Health status with 200 OK if the service is running.
     """
     return {"status": "healthy", "service": "vnetplanner-api"}
+
+
+@app.head("/healthz")
+async def health_check_head() -> Response:
+    """HEAD health check for Azure Front Door probes.
+
+    Returns minimal response with no body for efficient health probing.
+    """
+    return Response(
+        status_code=200,
+        headers={
+            "X-Health-Status": "healthy",
+            "X-Service": "vnetplanner-api",
+        },
+    )
 
 
 def run() -> None:
