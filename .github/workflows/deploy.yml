@@ -554,100 +554,101 @@ jobs:
       - name: Get Container App FQDNs and Environment Details
         id: get-endpoints
         run: |
+          set -e  # Exit on any error
           echo "🔍 Getting Container Apps Environment details..."
           CAE_NAME="cae-vnetplanner-dev"
           WEB_APP_NAME="ca-vnetplanner-web-dev"
           API_APP_NAME="ca-vnetplanner-api-dev"
+          WAF_POLICY_NAME="wafpolvnetplannerdev"
           
           # Get Container Apps Environment ID
+          echo "Getting CAE ID..."
           CAE_ID=$(az containerapp env show \
             --name "$CAE_NAME" \
             --resource-group "${{ vars.RESOURCE_GROUP }}" \
             --query "id" -o tsv)
+          if [ -z "$CAE_ID" ]; then
+            echo "❌ Failed to get Container Apps Environment ID"
+            exit 1
+          fi
           echo "cae_id=$CAE_ID" >> $GITHUB_OUTPUT
           
-          # Get Container Apps Environment location (normalize to API format: remove spaces, lowercase)
+          # Get Container Apps Environment location (normalize to API format)
+          echo "Getting CAE location..."
           CAE_LOCATION_RAW=$(az containerapp env show \
             --name "$CAE_NAME" \
             --resource-group "${{ vars.RESOURCE_GROUP }}" \
             --query "location" -o tsv)
-          # Normalize location: "East US 2" -> "eastus2"
           CAE_LOCATION=$(echo "$CAE_LOCATION_RAW" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
           echo "cae_location=$CAE_LOCATION" >> $GITHUB_OUTPUT
           
           # Get Web App FQDN
+          echo "Getting Web App FQDN..."
           WEB_FQDN=$(az containerapp show \
             --name "$WEB_APP_NAME" \
             --resource-group "${{ vars.RESOURCE_GROUP }}" \
             --query "properties.configuration.ingress.fqdn" -o tsv)
+          if [ -z "$WEB_FQDN" ]; then
+            echo "❌ Failed to get Web App FQDN"
+            exit 1
+          fi
           echo "web_fqdn=$WEB_FQDN" >> $GITHUB_OUTPUT
           
           # Get API App FQDN
+          echo "Getting API App FQDN..."
           API_FQDN=$(az containerapp show \
             --name "$API_APP_NAME" \
             --resource-group "${{ vars.RESOURCE_GROUP }}" \
             --query "properties.configuration.ingress.fqdn" -o tsv)
+          if [ -z "$API_FQDN" ]; then
+            echo "❌ Failed to get API App FQDN"
+            exit 1
+          fi
           echo "api_fqdn=$API_FQDN" >> $GITHUB_OUTPUT
           
-          # Get WAF Policy ID (name format: wafpol<baseName><env> with dashes removed)
+          # Get WAF Policy ID
+          echo "Getting WAF Policy ID..."
           WAF_POLICY_ID=$(az network front-door waf-policy show \
-            --name "wafpolvnetplannerdev" \
+            --name "$WAF_POLICY_NAME" \
             --resource-group "${{ vars.RESOURCE_GROUP }}" \
-            --query "id" -o tsv 2>/dev/null || echo "")
+            --query "id" -o tsv)
+          if [ -z "$WAF_POLICY_ID" ]; then
+            echo "❌ Failed to get WAF Policy ID (looking for: $WAF_POLICY_NAME)"
+            exit 1
+          fi
           echo "waf_policy_id=$WAF_POLICY_ID" >> $GITHUB_OUTPUT
           
           echo "✅ Container Apps Environment ID: $CAE_ID"
-          echo "✅ CAE Location (raw): $CAE_LOCATION_RAW"
-          echo "✅ CAE Location (normalized): $CAE_LOCATION"
+          echo "✅ CAE Location: $CAE_LOCATION"
           echo "✅ Web FQDN: $WEB_FQDN"
           echo "✅ API FQDN: $API_FQDN"
           echo "✅ WAF Policy ID: $WAF_POLICY_ID"
 
-      - name: Validate and Debug Front Door Parameters
+      - name: Generate Front Door Parameters File
         run: |
-          echo "🔍 Front Door Deployment Parameters:"
-          echo "  environment: dev"
-          echo "  location: ${{ steps.get-endpoints.outputs.cae_location }}"
-          echo "  webAppHostname: ${{ steps.get-endpoints.outputs.web_fqdn }}"
-          echo "  apiAppHostname: ${{ steps.get-endpoints.outputs.api_fqdn }}"
-          echo "  containerAppsEnvironmentId: ${{ steps.get-endpoints.outputs.cae_id }}"
-          echo "  wafPolicyId: ${{ steps.get-endpoints.outputs.waf_policy_id }}"
-          echo ""
-          
-          # Validate required parameters
-          MISSING_PARAMS=""
-          if [ -z "${{ steps.get-endpoints.outputs.web_fqdn }}" ]; then
-            MISSING_PARAMS="${MISSING_PARAMS} webAppHostname"
-          fi
-          if [ -z "${{ steps.get-endpoints.outputs.api_fqdn }}" ]; then
-            MISSING_PARAMS="${MISSING_PARAMS} apiAppHostname"
-          fi
-          if [ -z "${{ steps.get-endpoints.outputs.cae_id }}" ]; then
-            MISSING_PARAMS="${MISSING_PARAMS} containerAppsEnvironmentId"
-          fi
-          if [ -z "${{ steps.get-endpoints.outputs.waf_policy_id }}" ]; then
-            MISSING_PARAMS="${MISSING_PARAMS} wafPolicyId"
-          fi
-          
-          if [ -n "$MISSING_PARAMS" ]; then
-            echo "❌ Missing required parameters:$MISSING_PARAMS"
-            echo "   Ensure container apps and WAF policy are deployed before Front Door."
-            exit 1
-          fi
-          echo "✅ All required parameters present"
+          cat > frontdoor-params-dev.json << EOF
+          {
+            "\$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+            "contentVersion": "1.0.0.0",
+            "parameters": {
+              "environment": { "value": "dev" },
+              "location": { "value": "${{ steps.get-endpoints.outputs.cae_location }}" },
+              "webAppHostname": { "value": "${{ steps.get-endpoints.outputs.web_fqdn }}" },
+              "apiAppHostname": { "value": "${{ steps.get-endpoints.outputs.api_fqdn }}" },
+              "containerAppsEnvironmentId": { "value": "${{ steps.get-endpoints.outputs.cae_id }}" },
+              "wafPolicyId": { "value": "${{ steps.get-endpoints.outputs.waf_policy_id }}" }
+            }
+          }
+          EOF
+          echo "📋 Generated parameters file:"
+          cat frontdoor-params-dev.json
 
       - name: Deploy Front Door
         uses: azure/arm-deploy@v2
         with:
           resourceGroupName: ${{ vars.RESOURCE_GROUP }}
           template: ./infra/front-door-deployment.bicep
-          parameters: |
-            environment=dev
-            location=${{ steps.get-endpoints.outputs.cae_location }}
-            webAppHostname=${{ steps.get-endpoints.outputs.web_fqdn }}
-            apiAppHostname=${{ steps.get-endpoints.outputs.api_fqdn }}
-            containerAppsEnvironmentId=${{ steps.get-endpoints.outputs.cae_id }}
-            wafPolicyId=${{ steps.get-endpoints.outputs.waf_policy_id }}
+          parameters: frontdoor-params-dev.json
           deploymentName: frontdoor-dev-${{ github.run_id }}
           failOnStdErr: false
 
@@ -706,100 +707,101 @@ jobs:
       - name: Get Container App FQDNs and Environment Details
         id: get-endpoints
         run: |
+          set -e  # Exit on any error
           echo "🔍 Getting Container Apps Environment details..."
           CAE_NAME="cae-vnetplanner-prod"
           WEB_APP_NAME="ca-vnetplanner-web-prod"
           API_APP_NAME="ca-vnetplanner-api-prod"
+          WAF_POLICY_NAME="wafpolvnetplannerprod"
           
           # Get Container Apps Environment ID
+          echo "Getting CAE ID..."
           CAE_ID=$(az containerapp env show \
             --name "$CAE_NAME" \
             --resource-group "${{ vars.RESOURCE_GROUP }}" \
             --query "id" -o tsv)
+          if [ -z "$CAE_ID" ]; then
+            echo "❌ Failed to get Container Apps Environment ID"
+            exit 1
+          fi
           echo "cae_id=$CAE_ID" >> $GITHUB_OUTPUT
           
-          # Get Container Apps Environment location (normalize to API format: remove spaces, lowercase)
+          # Get Container Apps Environment location (normalize to API format)
+          echo "Getting CAE location..."
           CAE_LOCATION_RAW=$(az containerapp env show \
             --name "$CAE_NAME" \
             --resource-group "${{ vars.RESOURCE_GROUP }}" \
             --query "location" -o tsv)
-          # Normalize location: "East US 2" -> "eastus2"
           CAE_LOCATION=$(echo "$CAE_LOCATION_RAW" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
           echo "cae_location=$CAE_LOCATION" >> $GITHUB_OUTPUT
           
           # Get Web App FQDN
+          echo "Getting Web App FQDN..."
           WEB_FQDN=$(az containerapp show \
             --name "$WEB_APP_NAME" \
             --resource-group "${{ vars.RESOURCE_GROUP }}" \
             --query "properties.configuration.ingress.fqdn" -o tsv)
+          if [ -z "$WEB_FQDN" ]; then
+            echo "❌ Failed to get Web App FQDN"
+            exit 1
+          fi
           echo "web_fqdn=$WEB_FQDN" >> $GITHUB_OUTPUT
           
           # Get API App FQDN
+          echo "Getting API App FQDN..."
           API_FQDN=$(az containerapp show \
             --name "$API_APP_NAME" \
             --resource-group "${{ vars.RESOURCE_GROUP }}" \
             --query "properties.configuration.ingress.fqdn" -o tsv)
+          if [ -z "$API_FQDN" ]; then
+            echo "❌ Failed to get API App FQDN"
+            exit 1
+          fi
           echo "api_fqdn=$API_FQDN" >> $GITHUB_OUTPUT
           
-          # Get WAF Policy ID (name format: wafpol<baseName><env> with dashes removed)
+          # Get WAF Policy ID
+          echo "Getting WAF Policy ID..."
           WAF_POLICY_ID=$(az network front-door waf-policy show \
-            --name "wafpolvnetplannerprod" \
+            --name "$WAF_POLICY_NAME" \
             --resource-group "${{ vars.RESOURCE_GROUP }}" \
-            --query "id" -o tsv 2>/dev/null || echo "")
+            --query "id" -o tsv)
+          if [ -z "$WAF_POLICY_ID" ]; then
+            echo "❌ Failed to get WAF Policy ID (looking for: $WAF_POLICY_NAME)"
+            exit 1
+          fi
           echo "waf_policy_id=$WAF_POLICY_ID" >> $GITHUB_OUTPUT
           
           echo "✅ Container Apps Environment ID: $CAE_ID"
-          echo "✅ CAE Location (raw): $CAE_LOCATION_RAW"
-          echo "✅ CAE Location (normalized): $CAE_LOCATION"
+          echo "✅ CAE Location: $CAE_LOCATION"
           echo "✅ Web FQDN: $WEB_FQDN"
           echo "✅ API FQDN: $API_FQDN"
           echo "✅ WAF Policy ID: $WAF_POLICY_ID"
 
-      - name: Validate and Debug Front Door Parameters
+      - name: Generate Front Door Parameters File
         run: |
-          echo "🔍 Front Door Deployment Parameters:"
-          echo "  environment: prod"
-          echo "  location: ${{ steps.get-endpoints.outputs.cae_location }}"
-          echo "  webAppHostname: ${{ steps.get-endpoints.outputs.web_fqdn }}"
-          echo "  apiAppHostname: ${{ steps.get-endpoints.outputs.api_fqdn }}"
-          echo "  containerAppsEnvironmentId: ${{ steps.get-endpoints.outputs.cae_id }}"
-          echo "  wafPolicyId: ${{ steps.get-endpoints.outputs.waf_policy_id }}"
-          echo ""
-          
-          # Validate required parameters
-          MISSING_PARAMS=""
-          if [ -z "${{ steps.get-endpoints.outputs.web_fqdn }}" ]; then
-            MISSING_PARAMS="${MISSING_PARAMS} webAppHostname"
-          fi
-          if [ -z "${{ steps.get-endpoints.outputs.api_fqdn }}" ]; then
-            MISSING_PARAMS="${MISSING_PARAMS} apiAppHostname"
-          fi
-          if [ -z "${{ steps.get-endpoints.outputs.cae_id }}" ]; then
-            MISSING_PARAMS="${MISSING_PARAMS} containerAppsEnvironmentId"
-          fi
-          if [ -z "${{ steps.get-endpoints.outputs.waf_policy_id }}" ]; then
-            MISSING_PARAMS="${MISSING_PARAMS} wafPolicyId"
-          fi
-          
-          if [ -n "$MISSING_PARAMS" ]; then
-            echo "❌ Missing required parameters:$MISSING_PARAMS"
-            echo "   Ensure container apps and WAF policy are deployed before Front Door."
-            exit 1
-          fi
-          echo "✅ All required parameters present"
+          cat > frontdoor-params-prod.json << EOF
+          {
+            "\$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+            "contentVersion": "1.0.0.0",
+            "parameters": {
+              "environment": { "value": "prod" },
+              "location": { "value": "${{ steps.get-endpoints.outputs.cae_location }}" },
+              "webAppHostname": { "value": "${{ steps.get-endpoints.outputs.web_fqdn }}" },
+              "apiAppHostname": { "value": "${{ steps.get-endpoints.outputs.api_fqdn }}" },
+              "containerAppsEnvironmentId": { "value": "${{ steps.get-endpoints.outputs.cae_id }}" },
+              "wafPolicyId": { "value": "${{ steps.get-endpoints.outputs.waf_policy_id }}" }
+            }
+          }
+          EOF
+          echo "📋 Generated parameters file:"
+          cat frontdoor-params-prod.json
 
       - name: Deploy Front Door
         uses: azure/arm-deploy@v2
         with:
           resourceGroupName: ${{ vars.RESOURCE_GROUP }}
           template: ./infra/front-door-deployment.bicep
-          parameters: |
-            environment=prod
-            location=${{ steps.get-endpoints.outputs.cae_location }}
-            webAppHostname=${{ steps.get-endpoints.outputs.web_fqdn }}
-            apiAppHostname=${{ steps.get-endpoints.outputs.api_fqdn }}
-            containerAppsEnvironmentId=${{ steps.get-endpoints.outputs.cae_id }}
-            wafPolicyId=${{ steps.get-endpoints.outputs.waf_policy_id }}
+          parameters: frontdoor-params-prod.json
           deploymentName: frontdoor-prod-${{ github.run_id }}
           failOnStdErr: false
 
