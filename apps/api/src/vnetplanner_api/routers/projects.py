@@ -9,7 +9,6 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
-from fastapi.responses import JSONResponse
 
 from vnetplanner_api.cosmos import CosmosDBService, get_cosmos_service
 from vnetplanner_api.models import (
@@ -55,11 +54,11 @@ def get_user_id(x_user_id: Annotated[str | None, Header()] = None) -> str:
     # Validate UUID format
     try:
         uuid.UUID(x_user_id)
-    except ValueError:
+    except ValueError as err:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid user ID format - must be a valid UUID",
-        )
+        ) from err
 
     return x_user_id
 
@@ -103,7 +102,7 @@ async def list_projects(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to list projects: {str(e)}",
-        )
+        ) from e
 
 
 @router.get(
@@ -144,7 +143,7 @@ async def get_project(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get project: {str(e)}",
-        )
+        ) from e
 
 
 @router.post(
@@ -189,7 +188,7 @@ async def create_project(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create project: {str(e)}",
-        )
+        ) from e
 
 
 @router.put(
@@ -247,7 +246,7 @@ async def update_project(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update project: {str(e)}",
-        )
+        ) from e
 
 
 @router.delete(
@@ -287,4 +286,4 @@ async def delete_project(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete project: {str(e)}",
-        )
+        ) from e

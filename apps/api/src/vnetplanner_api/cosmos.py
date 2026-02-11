@@ -8,7 +8,7 @@ import logging
 import os
 from typing import Any
 
-from azure.cosmos import ContainerProxy, CosmosClient, PartitionKey
+from azure.cosmos import ContainerProxy, CosmosClient
 from azure.cosmos.exceptions import CosmosResourceNotFoundError
 from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 
