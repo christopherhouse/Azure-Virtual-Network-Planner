@@ -116,7 +116,7 @@ export async function flushTelemetry(): Promise<void> {
   const client = getTelemetryClient();
   if (!client) return;
 
-  return new Promise<void>((resolve) => {
+  return new Promise<void>(resolve => {
     client.flush();
     // Give a brief moment for the flush to complete
     setTimeout(resolve, 100);
