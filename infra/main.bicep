@@ -49,6 +49,7 @@ var vnetName = 'vnet-${resourceSuffix}'
 var nsgAcaName = 'nsg-aca-${resourceSuffix}'
 var nsgPeName = 'nsg-pe-${resourceSuffix}'
 var wafPolicyName = replace('wafpol${resourceSuffix}', '-', '')
+var cosmosAccountName = 'cosmos-${resourceSuffix}'
 
 // Merge default tags with provided tags
 var defaultTags = {
@@ -184,6 +185,30 @@ module diagnosticSettings 'modules/diagnostic-settings.bicep' = {
   }
 }
 
+// Deploy Private DNS Zone for Cosmos DB
+module cosmosDnsZone 'modules/private-dns-zone.bicep' = {
+  name: 'cosmosdns-${deployment().name}'
+  params: {
+    zoneName: 'privatelink.documents.azure.com'
+    vnetId: vnet.outputs.id
+    vnetName: vnet.outputs.name
+    tags: allTags
+  }
+}
+
+// Deploy Cosmos DB with Private Endpoint and RBAC
+module cosmosDb 'modules/cosmos-db.bicep' = {
+  name: 'cosmos-${deployment().name}'
+  params: {
+    location: location
+    cosmosAccountName: cosmosAccountName
+    privateEndpointSubnetId: vnet.outputs.peSubnetId
+    privateDnsZoneId: cosmosDnsZone.outputs.id
+    principalId: userAssignedIdentity.outputs.principalId
+    tags: allTags
+  }
+}
+
 // Deploy WAF Policy for Front Door
 module wafPolicy 'modules/waf-policy.bicep' = {
   name: 'waf-${deployment().name}'
@@ -255,3 +280,15 @@ output wafPolicyId string = wafPolicy.outputs.id
 
 @description('WAF Policy name')
 output wafPolicyName string = wafPolicy.outputs.name
+
+@description('Cosmos DB account name')
+output cosmosAccountName string = cosmosDb.outputs.name
+
+@description('Cosmos DB endpoint')
+output cosmosEndpoint string = cosmosDb.outputs.endpoint
+
+@description('Cosmos DB database name')
+output cosmosDatabaseName string = cosmosDb.outputs.databaseName
+
+@description('Cosmos DB container name')
+output cosmosContainerName string = cosmosDb.outputs.containerName

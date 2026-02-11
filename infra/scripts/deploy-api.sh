@@ -104,6 +104,7 @@ compute_names() {
     CAE_NAME="cae-${RESOURCE_SUFFIX}"
     UAMI_NAME="id-${RESOURCE_SUFFIX}"
     APP_INSIGHTS_NAME="appi-${RESOURCE_SUFFIX}"
+    COSMOS_ACCOUNT_NAME="cosmos-${RESOURCE_SUFFIX}"
     ACR_LOGIN_SERVER="${ACR_NAME}.azurecr.io"
     CONTAINER_IMAGE="${ACR_LOGIN_SERVER}/${BASE_NAME}-api:${IMAGE_TAG}"
     
@@ -111,6 +112,7 @@ compute_names() {
     print_success "Environment:      $CAE_NAME"
     print_success "Identity:         $UAMI_NAME"
     print_success "App Insights:     $APP_INSIGHTS_NAME"
+    print_success "Cosmos DB:        $COSMOS_ACCOUNT_NAME"
     print_success "Container Image:  $CONTAINER_IMAGE"
 }
 
@@ -127,12 +129,17 @@ fetch_resource_ids() {
         --query "id" -o tsv)
     print_success "CAE ID: $CAE_ID"
     
-    print_step "Getting User Assigned Identity ID..."
+    print_step "Getting User Assigned Identity ID and Client ID..."
     UAMI_ID=$(az identity show \
         --name "$UAMI_NAME" \
         --resource-group "$RESOURCE_GROUP" \
         --query "id" -o tsv)
+    UAMI_CLIENT_ID=$(az identity show \
+        --name "$UAMI_NAME" \
+        --resource-group "$RESOURCE_GROUP" \
+        --query "clientId" -o tsv)
     print_success "UAMI ID: $UAMI_ID"
+    print_success "UAMI Client ID: $UAMI_CLIENT_ID"
     
     print_step "Getting Application Insights connection string..."
     APP_INSIGHTS_CONNECTION_STRING=$(az monitor app-insights component show \
@@ -144,6 +151,18 @@ fetch_resource_ids() {
         print_success "App Insights connection string retrieved"
     else
         print_warning "App Insights not found or connection string unavailable"
+    fi
+    
+    print_step "Getting Cosmos DB endpoint..."
+    COSMOS_ENDPOINT=$(az cosmosdb show \
+        --name "$COSMOS_ACCOUNT_NAME" \
+        --resource-group "$RESOURCE_GROUP" \
+        --query "documentEndpoint" -o tsv 2>/dev/null || echo "")
+    
+    if [[ -n "$COSMOS_ENDPOINT" ]]; then
+        print_success "Cosmos DB endpoint: $COSMOS_ENDPOINT"
+    else
+        print_warning "Cosmos DB not found - API will not have database access"
     fi
 }
 
@@ -192,11 +211,23 @@ deploy_app() {
     print_info "  Min Replicas: $min_replicas"
     print_info "  Max Replicas: $max_replicas"
     print_info "  Target Port:  $TARGET_PORT"
+    if [[ -n "${COSMOS_ENDPOINT:-}" ]]; then
+        print_info "  Cosmos DB:    $COSMOS_ENDPOINT"
+    fi
     
-    # Build environment variables
-    local env_vars=""
+    # Build environment variables array
+    local env_vars_array=()
+    
     if [[ -n "${APP_INSIGHTS_CONNECTION_STRING:-}" ]]; then
-        env_vars="APPLICATIONINSIGHTS_CONNECTION_STRING=$APP_INSIGHTS_CONNECTION_STRING"
+        env_vars_array+=("APPLICATIONINSIGHTS_CONNECTION_STRING=$APP_INSIGHTS_CONNECTION_STRING")
+    fi
+    
+    # Add Cosmos DB configuration
+    if [[ -n "${COSMOS_ENDPOINT:-}" ]]; then
+        env_vars_array+=("COSMOS_ENDPOINT=$COSMOS_ENDPOINT")
+        env_vars_array+=("COSMOS_DATABASE_NAME=vnetplanner")
+        env_vars_array+=("COSMOS_CONTAINER_NAME=projects")
+        env_vars_array+=("AZURE_CLIENT_ID=$UAMI_CLIENT_ID")
     fi
     
     if [[ "$APP_EXISTS" == "true" ]]; then
@@ -217,8 +248,8 @@ deploy_app() {
             --output none
         )
         
-        if [[ -n "$env_vars" ]]; then
-            update_cmd+=(--set-env-vars "$env_vars")
+        if [[ ${#env_vars_array[@]} -gt 0 ]]; then
+            update_cmd+=(--set-env-vars "${env_vars_array[@]}")
         fi
         
         "${update_cmd[@]}"
@@ -247,8 +278,8 @@ deploy_app() {
             --output none
         )
         
-        if [[ -n "$env_vars" ]]; then
-            create_cmd+=(--env-vars "$env_vars")
+        if [[ ${#env_vars_array[@]} -gt 0 ]]; then
+            create_cmd+=(--env-vars "${env_vars_array[@]}")
         fi
         
         "${create_cmd[@]}"

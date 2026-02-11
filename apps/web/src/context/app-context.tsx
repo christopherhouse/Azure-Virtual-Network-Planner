@@ -5,8 +5,8 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { AppState, Project, VNet, Subnet, DelegationOption, ServiceEndpointOption } from '@/types';
 import {
-  loadAppState,
-  saveAppState,
+  loadAppState as loadLocalState,
+  saveAppState as saveLocalState,
   createProject,
   createVNet,
   createSubnet,
@@ -23,11 +23,21 @@ import {
   generateId,
   mergeSubnets,
 } from '@/lib/storage';
+import {
+  loadAppState as loadSyncState,
+  saveAppState as saveSyncState,
+  getSyncState,
+  subscribeSyncState,
+  SyncStatus,
+  deleteProjectSync,
+} from '@/lib/sync-storage';
 import { splitCIDR, mergeCIDR, canMergeCIDR } from '@/lib/cidr';
 
 interface AppContextType {
   state: AppState;
   activeProject: Project | undefined;
+  syncStatus: SyncStatus;
+  isOnline: boolean;
 
   // Project operations
   createNewProject: (name: string, description?: string) => Project;
@@ -90,18 +100,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }));
 
   const [isLoaded, setIsLoaded] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
+  const [isOnline, setIsOnline] = useState(true);
 
-  // Load state from local storage on mount - intentional initialization pattern
+  // Subscribe to sync state changes
   useEffect(() => {
-    const loaded = loadAppState();
-    setState(loaded); // eslint-disable-line react-hooks/set-state-in-effect -- initialization
-    setIsLoaded(true);
+    const unsubscribe = subscribeSyncState(syncState => {
+      setSyncStatus(syncState.status);
+      setIsOnline(syncState.status !== 'offline');
+    });
+    return unsubscribe;
   }, []);
 
-  // Save state to local storage on change
+  // Load state on mount - tries API first, falls back to localStorage
+  useEffect(() => {
+    const loadState = async () => {
+      try {
+        const loaded = await loadSyncState();
+        setState(loaded); // eslint-disable-line react-hooks/set-state-in-effect -- initialization
+      } catch (error) {
+        console.error('Failed to load state, using local storage:', error);
+        const local = loadLocalState();
+        setState(local); // eslint-disable-line react-hooks/set-state-in-effect -- initialization
+      }
+      setIsLoaded(true);
+    };
+    loadState();
+  }, []);
+
+  // Save state on change - syncs to API if available
   useEffect(() => {
     if (isLoaded) {
-      saveAppState(state);
+      // Use async save but don't await (fire and forget for UI responsiveness)
+      saveSyncState(state).catch(error => {
+        console.error('Failed to sync state:', error);
+        // Always save to local storage as backup
+        saveLocalState(state);
+      });
     }
   }, [state, isLoaded]);
 
@@ -119,6 +154,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const removeProject = useCallback((projectId: string) => {
+    // Delete from API in background
+    deleteProjectSync(projectId).catch(error => {
+      console.error('Failed to delete project from API:', error);
+    });
     setState(prev => deleteProject(prev, projectId));
   }, []);
 
@@ -280,6 +319,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const value: AppContextType = {
     state,
     activeProject,
+    syncStatus,
+    isOnline,
     createNewProject,
     updateProjectDetails,
     removeProject,

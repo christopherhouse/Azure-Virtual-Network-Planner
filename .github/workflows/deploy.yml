@@ -193,6 +193,7 @@ jobs:
       - name: Deploy Core Infrastructure
         uses: azure/arm-deploy@v2
         with:
+          scope: resourcegroup
           resourceGroupName: ${{ vars.RESOURCE_GROUP }}
           template: ./infra/main.bicep
           parameters: ./infra/main.dev.bicepparam
@@ -224,6 +225,7 @@ jobs:
       - name: Deploy Core Infrastructure
         uses: azure/arm-deploy@v2
         with:
+          scope: resourcegroup
           resourceGroupName: ${{ vars.RESOURCE_GROUP }}
           template: ./infra/main.bicep
           parameters: ./infra/main.prod.bicepparam
@@ -661,6 +663,7 @@ jobs:
       - name: Deploy Front Door
         uses: azure/arm-deploy@v2
         with:
+          scope: resourcegroup
           resourceGroupName: ${{ vars.RESOURCE_GROUP }}
           template: ./infra/front-door-deployment.bicep
           parameters: frontdoor-params-dev.json
@@ -829,6 +832,7 @@ jobs:
       - name: Deploy Front Door
         uses: azure/arm-deploy@v2
         with:
+          scope: resourcegroup
           resourceGroupName: ${{ vars.RESOURCE_GROUP }}
           template: ./infra/front-door-deployment.bicep
           parameters: frontdoor-params-prod.json
