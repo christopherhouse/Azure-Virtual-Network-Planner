@@ -34,6 +34,7 @@ def mock_cosmos_service() -> MagicMock:
 @pytest.fixture
 def override_cosmos() -> Generator[Callable[[MagicMock], None], None, None]:
     """Fixture to override cosmos service dependency."""
+
     def _override(mock: MagicMock) -> None:
         app.dependency_overrides[get_cosmos_service] = lambda: mock
 
