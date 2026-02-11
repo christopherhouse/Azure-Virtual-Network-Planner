@@ -100,7 +100,7 @@ compute_names() {
     print_header "Computing Resource Names"
     
     RESOURCE_SUFFIX="${BASE_NAME}-${ENVIRONMENT}"
-    CONTAINER_APP_NAME="ca-${RESOURCE_SUFFIX}"
+    CONTAINER_APP_NAME="ca-${BASE_NAME}-web-${ENVIRONMENT}"
     CAE_NAME="cae-${RESOURCE_SUFFIX}"
     UAMI_NAME="id-${RESOURCE_SUFFIX}"
     KEY_VAULT_NAME="kv-${RESOURCE_SUFFIX}"
