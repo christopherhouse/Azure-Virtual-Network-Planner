@@ -89,13 +89,13 @@ async def list_projects(
                     id=project.get("id", ""),
                     name=project.get("name", ""),
                     description=project.get("description", ""),
-                    vnetCount=len(project.get("vnets", [])),
-                    createdAt=project.get("createdAt", ""),
-                    updatedAt=project.get("updatedAt", ""),
+                    vnet_count=len(project.get("vnets", [])),
+                    created_at=project.get("createdAt", ""),
+                    updated_at=project.get("updatedAt", ""),
                 )
             )
 
-        return ProjectListResponse(projects=items, totalCount=len(items))
+        return ProjectListResponse(projects=items, total_count=len(items))
 
     except Exception as e:
         logger.exception("Error listing projects: %s", e)
@@ -174,8 +174,8 @@ async def create_project(
             name=project_create.name,
             description=project_create.description,
             vnets=[],
-            createdAt=now,
-            updatedAt=now,
+            created_at=now,
+            updated_at=now,
         )
 
         await cosmos.create_project(user_id, project.model_dump(by_alias=True))
