@@ -566,11 +566,13 @@ jobs:
             --query "id" -o tsv)
           echo "cae_id=$CAE_ID" >> $GITHUB_OUTPUT
           
-          # Get Container Apps Environment location
-          CAE_LOCATION=$(az containerapp env show \
+          # Get Container Apps Environment location (normalize to API format: remove spaces, lowercase)
+          CAE_LOCATION_RAW=$(az containerapp env show \
             --name "$CAE_NAME" \
             --resource-group "${{ vars.RESOURCE_GROUP }}" \
             --query "location" -o tsv)
+          # Normalize location: "East US 2" -> "eastus2"
+          CAE_LOCATION=$(echo "$CAE_LOCATION_RAW" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
           echo "cae_location=$CAE_LOCATION" >> $GITHUB_OUTPUT
           
           # Get Web App FQDN
@@ -595,9 +597,24 @@ jobs:
           echo "waf_policy_id=$WAF_POLICY_ID" >> $GITHUB_OUTPUT
           
           echo "✅ Container Apps Environment ID: $CAE_ID"
+          echo "✅ CAE Location (raw): $CAE_LOCATION_RAW"
+          echo "✅ CAE Location (normalized): $CAE_LOCATION"
           echo "✅ Web FQDN: $WEB_FQDN"
           echo "✅ API FQDN: $API_FQDN"
           echo "✅ WAF Policy ID: $WAF_POLICY_ID"
+
+      - name: Debug Front Door Parameters
+        run: |
+          echo "🔍 Front Door Deployment Parameters:"
+          echo "  environment: dev"
+          echo "  location: ${{ steps.get-endpoints.outputs.cae_location }}"
+          echo "  webAppHostname: ${{ steps.get-endpoints.outputs.web_fqdn }}"
+          echo "  apiAppHostname: ${{ steps.get-endpoints.outputs.api_fqdn }}"
+          echo "  containerAppsEnvironmentId: ${{ steps.get-endpoints.outputs.cae_id }}"
+          echo "  wafPolicyId: ${{ steps.get-endpoints.outputs.waf_policy_id }}"
+          echo ""
+          echo "📋 Raw parameters string:"
+          echo "environment=dev location=${{ steps.get-endpoints.outputs.cae_location }} webAppHostname=${{ steps.get-endpoints.outputs.web_fqdn }} apiAppHostname=${{ steps.get-endpoints.outputs.api_fqdn }} containerAppsEnvironmentId=${{ steps.get-endpoints.outputs.cae_id }} wafPolicyId=${{ steps.get-endpoints.outputs.waf_policy_id }}"
 
       - name: Deploy Front Door
         uses: azure/arm-deploy@v2
@@ -606,7 +623,7 @@ jobs:
           template: ./infra/front-door-deployment.bicep
           parameters: |
             environment=dev
-            location='${{ steps.get-endpoints.outputs.cae_location }}'
+            location=${{ steps.get-endpoints.outputs.cae_location }}
             webAppHostname=${{ steps.get-endpoints.outputs.web_fqdn }}
             apiAppHostname=${{ steps.get-endpoints.outputs.api_fqdn }}
             containerAppsEnvironmentId=${{ steps.get-endpoints.outputs.cae_id }}
@@ -681,11 +698,13 @@ jobs:
             --query "id" -o tsv)
           echo "cae_id=$CAE_ID" >> $GITHUB_OUTPUT
           
-          # Get Container Apps Environment location
-          CAE_LOCATION=$(az containerapp env show \
+          # Get Container Apps Environment location (normalize to API format: remove spaces, lowercase)
+          CAE_LOCATION_RAW=$(az containerapp env show \
             --name "$CAE_NAME" \
             --resource-group "${{ vars.RESOURCE_GROUP }}" \
             --query "location" -o tsv)
+          # Normalize location: "East US 2" -> "eastus2"
+          CAE_LOCATION=$(echo "$CAE_LOCATION_RAW" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
           echo "cae_location=$CAE_LOCATION" >> $GITHUB_OUTPUT
           
           # Get Web App FQDN
@@ -710,9 +729,24 @@ jobs:
           echo "waf_policy_id=$WAF_POLICY_ID" >> $GITHUB_OUTPUT
           
           echo "✅ Container Apps Environment ID: $CAE_ID"
+          echo "✅ CAE Location (raw): $CAE_LOCATION_RAW"
+          echo "✅ CAE Location (normalized): $CAE_LOCATION"
           echo "✅ Web FQDN: $WEB_FQDN"
           echo "✅ API FQDN: $API_FQDN"
           echo "✅ WAF Policy ID: $WAF_POLICY_ID"
+
+      - name: Debug Front Door Parameters
+        run: |
+          echo "🔍 Front Door Deployment Parameters:"
+          echo "  environment: prod"
+          echo "  location: ${{ steps.get-endpoints.outputs.cae_location }}"
+          echo "  webAppHostname: ${{ steps.get-endpoints.outputs.web_fqdn }}"
+          echo "  apiAppHostname: ${{ steps.get-endpoints.outputs.api_fqdn }}"
+          echo "  containerAppsEnvironmentId: ${{ steps.get-endpoints.outputs.cae_id }}"
+          echo "  wafPolicyId: ${{ steps.get-endpoints.outputs.waf_policy_id }}"
+          echo ""
+          echo "📋 Raw parameters string:"
+          echo "environment=prod location=${{ steps.get-endpoints.outputs.cae_location }} webAppHostname=${{ steps.get-endpoints.outputs.web_fqdn }} apiAppHostname=${{ steps.get-endpoints.outputs.api_fqdn }} containerAppsEnvironmentId=${{ steps.get-endpoints.outputs.cae_id }} wafPolicyId=${{ steps.get-endpoints.outputs.waf_policy_id }}"
 
       - name: Deploy Front Door
         uses: azure/arm-deploy@v2
@@ -721,7 +755,7 @@ jobs:
           template: ./infra/front-door-deployment.bicep
           parameters: |
             environment=prod
-            location='${{ steps.get-endpoints.outputs.cae_location }}'
+            location=${{ steps.get-endpoints.outputs.cae_location }}
             webAppHostname=${{ steps.get-endpoints.outputs.web_fqdn }}
             apiAppHostname=${{ steps.get-endpoints.outputs.api_fqdn }}
             containerAppsEnvironmentId=${{ steps.get-endpoints.outputs.cae_id }}
