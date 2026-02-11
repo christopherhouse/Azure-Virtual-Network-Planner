@@ -1,6 +1,8 @@
 // Main Bicep file for Azure VNet Planner Core Infrastructure
 // Deploys: VNet, NSGs, ACR, Container Apps Environment (Workload Profiles), 
-// Key Vault, User Assigned Managed Identity, WAF Policy, Front Door Premium
+// Key Vault, User Assigned Managed Identity, WAF Policy
+// NOTE: Container Apps deployed via scripts after image import to ACR
+// NOTE: Front Door deployed via front-door-deployment.bicep after Container Apps exist
 
 targetScope = 'resourceGroup'
 
