@@ -589,9 +589,9 @@ jobs:
             --query "properties.configuration.ingress.fqdn" -o tsv)
           echo "api_fqdn=$API_FQDN" >> $GITHUB_OUTPUT
           
-          # Get WAF Policy ID
+          # Get WAF Policy ID (name format: wafpol<baseName><env> with dashes removed)
           WAF_POLICY_ID=$(az network front-door waf-policy show \
-            --name "wafvnetplannerdev" \
+            --name "wafpolvnetplannerdev" \
             --resource-group "${{ vars.RESOURCE_GROUP }}" \
             --query "id" -o tsv 2>/dev/null || echo "")
           echo "waf_policy_id=$WAF_POLICY_ID" >> $GITHUB_OUTPUT
@@ -603,7 +603,7 @@ jobs:
           echo "✅ API FQDN: $API_FQDN"
           echo "✅ WAF Policy ID: $WAF_POLICY_ID"
 
-      - name: Debug Front Door Parameters
+      - name: Validate and Debug Front Door Parameters
         run: |
           echo "🔍 Front Door Deployment Parameters:"
           echo "  environment: dev"
@@ -613,8 +613,28 @@ jobs:
           echo "  containerAppsEnvironmentId: ${{ steps.get-endpoints.outputs.cae_id }}"
           echo "  wafPolicyId: ${{ steps.get-endpoints.outputs.waf_policy_id }}"
           echo ""
-          echo "📋 Raw parameters string:"
-          echo "environment=dev location=${{ steps.get-endpoints.outputs.cae_location }} webAppHostname=${{ steps.get-endpoints.outputs.web_fqdn }} apiAppHostname=${{ steps.get-endpoints.outputs.api_fqdn }} containerAppsEnvironmentId=${{ steps.get-endpoints.outputs.cae_id }} wafPolicyId=${{ steps.get-endpoints.outputs.waf_policy_id }}"
+          
+          # Validate required parameters
+          MISSING_PARAMS=""
+          if [ -z "${{ steps.get-endpoints.outputs.web_fqdn }}" ]; then
+            MISSING_PARAMS="${MISSING_PARAMS} webAppHostname"
+          fi
+          if [ -z "${{ steps.get-endpoints.outputs.api_fqdn }}" ]; then
+            MISSING_PARAMS="${MISSING_PARAMS} apiAppHostname"
+          fi
+          if [ -z "${{ steps.get-endpoints.outputs.cae_id }}" ]; then
+            MISSING_PARAMS="${MISSING_PARAMS} containerAppsEnvironmentId"
+          fi
+          if [ -z "${{ steps.get-endpoints.outputs.waf_policy_id }}" ]; then
+            MISSING_PARAMS="${MISSING_PARAMS} wafPolicyId"
+          fi
+          
+          if [ -n "$MISSING_PARAMS" ]; then
+            echo "❌ Missing required parameters:$MISSING_PARAMS"
+            echo "   Ensure container apps and WAF policy are deployed before Front Door."
+            exit 1
+          fi
+          echo "✅ All required parameters present"
 
       - name: Deploy Front Door
         uses: azure/arm-deploy@v2
@@ -721,9 +741,9 @@ jobs:
             --query "properties.configuration.ingress.fqdn" -o tsv)
           echo "api_fqdn=$API_FQDN" >> $GITHUB_OUTPUT
           
-          # Get WAF Policy ID
+          # Get WAF Policy ID (name format: wafpol<baseName><env> with dashes removed)
           WAF_POLICY_ID=$(az network front-door waf-policy show \
-            --name "wafvnetplannerprod" \
+            --name "wafpolvnetplannerprod" \
             --resource-group "${{ vars.RESOURCE_GROUP }}" \
             --query "id" -o tsv 2>/dev/null || echo "")
           echo "waf_policy_id=$WAF_POLICY_ID" >> $GITHUB_OUTPUT
@@ -735,7 +755,7 @@ jobs:
           echo "✅ API FQDN: $API_FQDN"
           echo "✅ WAF Policy ID: $WAF_POLICY_ID"
 
-      - name: Debug Front Door Parameters
+      - name: Validate and Debug Front Door Parameters
         run: |
           echo "🔍 Front Door Deployment Parameters:"
           echo "  environment: prod"
@@ -745,8 +765,28 @@ jobs:
           echo "  containerAppsEnvironmentId: ${{ steps.get-endpoints.outputs.cae_id }}"
           echo "  wafPolicyId: ${{ steps.get-endpoints.outputs.waf_policy_id }}"
           echo ""
-          echo "📋 Raw parameters string:"
-          echo "environment=prod location=${{ steps.get-endpoints.outputs.cae_location }} webAppHostname=${{ steps.get-endpoints.outputs.web_fqdn }} apiAppHostname=${{ steps.get-endpoints.outputs.api_fqdn }} containerAppsEnvironmentId=${{ steps.get-endpoints.outputs.cae_id }} wafPolicyId=${{ steps.get-endpoints.outputs.waf_policy_id }}"
+          
+          # Validate required parameters
+          MISSING_PARAMS=""
+          if [ -z "${{ steps.get-endpoints.outputs.web_fqdn }}" ]; then
+            MISSING_PARAMS="${MISSING_PARAMS} webAppHostname"
+          fi
+          if [ -z "${{ steps.get-endpoints.outputs.api_fqdn }}" ]; then
+            MISSING_PARAMS="${MISSING_PARAMS} apiAppHostname"
+          fi
+          if [ -z "${{ steps.get-endpoints.outputs.cae_id }}" ]; then
+            MISSING_PARAMS="${MISSING_PARAMS} containerAppsEnvironmentId"
+          fi
+          if [ -z "${{ steps.get-endpoints.outputs.waf_policy_id }}" ]; then
+            MISSING_PARAMS="${MISSING_PARAMS} wafPolicyId"
+          fi
+          
+          if [ -n "$MISSING_PARAMS" ]; then
+            echo "❌ Missing required parameters:$MISSING_PARAMS"
+            echo "   Ensure container apps and WAF policy are deployed before Front Door."
+            exit 1
+          fi
+          echo "✅ All required parameters present"
 
       - name: Deploy Front Door
         uses: azure/arm-deploy@v2
