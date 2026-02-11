@@ -606,7 +606,7 @@ jobs:
           template: ./infra/front-door-deployment.bicep
           parameters: |
             environment=dev
-            location=${{ steps.get-endpoints.outputs.cae_location }}
+            location='${{ steps.get-endpoints.outputs.cae_location }}'
             webAppHostname=${{ steps.get-endpoints.outputs.web_fqdn }}
             apiAppHostname=${{ steps.get-endpoints.outputs.api_fqdn }}
             containerAppsEnvironmentId=${{ steps.get-endpoints.outputs.cae_id }}
@@ -721,7 +721,7 @@ jobs:
           template: ./infra/front-door-deployment.bicep
           parameters: |
             environment=prod
-            location=${{ steps.get-endpoints.outputs.cae_location }}
+            location='${{ steps.get-endpoints.outputs.cae_location }}'
             webAppHostname=${{ steps.get-endpoints.outputs.web_fqdn }}
             apiAppHostname=${{ steps.get-endpoints.outputs.api_fqdn }}
             containerAppsEnvironmentId=${{ steps.get-endpoints.outputs.cae_id }}
