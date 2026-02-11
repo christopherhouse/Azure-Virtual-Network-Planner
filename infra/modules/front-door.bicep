@@ -96,7 +96,7 @@ resource apiOriginGroup 'Microsoft.Cdn/profiles/originGroups@2024-02-01' = {
     }
     healthProbeSettings: {
       probePath: '/healthz'
-      probeRequestType: 'GET'
+      probeRequestType: 'HEAD'
       probeProtocol: 'Https'
       probeIntervalInSeconds: 60
     }
