@@ -1,6 +1,6 @@
 // Main Bicep file for Azure VNet Planner Core Infrastructure
-// Deploys: ACR, Container Apps Environment, Key Vault, User Assigned Managed Identity
-// Note: Container App is deployed separately via deploy-app.sh after image is ready
+// Deploys: VNet, NSGs, ACR, Container Apps Environment (Workload Profiles), 
+// Key Vault, User Assigned Managed Identity, WAF Policy, Front Door Premium
 
 targetScope = 'resourceGroup'
 
@@ -17,6 +17,21 @@ param location string = resourceGroup().location
 @description('Base name for resources')
 param baseName string = 'vnetplanner'
 
+@description('VNet address space')
+param vnetAddressPrefix string = '10.0.0.0/23'
+
+@description('Container Apps subnet address prefix')
+param acaSubnetPrefix string = '10.0.0.0/25'
+
+@description('Private Endpoints subnet address prefix')
+param peSubnetPrefix string = '10.0.0.128/27'
+
+@description('Enable VNet integration for Container Apps')
+param enableVnetIntegration bool = true
+
+@description('Make Container Apps environment internal only (no public ingress)')
+param internalOnly bool = true
+
 @description('Tags for all resources')
 param tags object = {}
 
@@ -28,6 +43,10 @@ var logAnalyticsName = 'log-${resourceSuffix}'
 var keyVaultName = 'kv-${resourceSuffix}'
 var identityName = 'id-${resourceSuffix}'
 var appInsightsName = 'appi-${resourceSuffix}'
+var vnetName = 'vnet-${resourceSuffix}'
+var nsgAcaName = 'nsg-aca-${resourceSuffix}'
+var nsgPeName = 'nsg-pe-${resourceSuffix}'
+var wafPolicyName = 'wafpol-${resourceSuffix}'
 
 // Merge default tags with provided tags
 var defaultTags = {
@@ -49,13 +68,51 @@ module acr 'modules/acr.bicep' = {
   }
 }
 
-// Deploy Container Apps Environment
+// Deploy Network Security Groups
+module nsgAca 'modules/nsg.bicep' = {
+  name: 'nsg-aca-${deployment().name}'
+  params: {
+    location: location
+    nsgName: nsgAcaName
+    tags: allTags
+  }
+}
+
+module nsgPe 'modules/nsg.bicep' = {
+  name: 'nsg-pe-${deployment().name}'
+  params: {
+    location: location
+    nsgName: nsgPeName
+    tags: allTags
+  }
+}
+
+// Deploy Virtual Network
+module vnet 'modules/vnet.bicep' = {
+  name: 'vnet-${deployment().name}'
+  params: {
+    location: location
+    vnetName: vnetName
+    addressPrefix: vnetAddressPrefix
+    acaSubnetPrefix: acaSubnetPrefix
+    peSubnetPrefix: peSubnetPrefix
+    acaNsgId: nsgAca.outputs.id
+    peNsgId: nsgPe.outputs.id
+    tags: allTags
+  }
+}
+
+// Deploy Container Apps Environment (Workload Profiles with VNet integration)
 module containerAppsEnv 'modules/container-apps-environment.bicep' = {
   name: 'cae-${deployment().name}'
   params: {
     location: location
     environmentName: environmentName
     logAnalyticsName: logAnalyticsName
+    vnetIntegrationEnabled: enableVnetIntegration
+    infrastructureSubnetId: vnet.outputs.acaSubnetId
+    internalOnly: internalOnly
+    zoneRedundant: environment == 'prod'
     tags: allTags
   }
 }
@@ -125,6 +182,17 @@ module diagnosticSettings 'modules/diagnostic-settings.bicep' = {
   }
 }
 
+// Deploy WAF Policy for Front Door
+module wafPolicy 'modules/waf-policy.bicep' = {
+  name: 'waf-${deployment().name}'
+  params: {
+    wafPolicyName: wafPolicyName
+    mode: 'Prevention'
+    enabled: true
+    tags: allTags
+  }
+}
+
 // Outputs
 @description('Container Registry login server')
 output acrLoginServer string = acr.outputs.loginServer
@@ -161,3 +229,27 @@ output appInsightsName string = appInsights.outputs.name
 
 @description('Application Insights connection string')
 output appInsightsConnectionString string = appInsights.outputs.connectionString
+
+@description('Virtual Network name')
+output vnetName string = vnet.outputs.name
+
+@description('Virtual Network ID')
+output vnetId string = vnet.outputs.id
+
+@description('Container Apps subnet ID')
+output acaSubnetId string = vnet.outputs.acaSubnetId
+
+@description('Private Endpoints subnet ID')
+output peSubnetId string = vnet.outputs.peSubnetId
+
+@description('Container Apps Environment default domain')
+output containerAppsDefaultDomain string = containerAppsEnv.outputs.defaultDomain
+
+@description('Container Apps Environment static IP (for internal environments)')
+output containerAppsStaticIp string = containerAppsEnv.outputs.staticIp
+
+@description('WAF Policy ID')
+output wafPolicyId string = wafPolicy.outputs.id
+
+@description('WAF Policy name')
+output wafPolicyName string = wafPolicy.outputs.name

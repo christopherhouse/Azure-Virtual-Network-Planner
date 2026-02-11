@@ -23,6 +23,9 @@ param userAssignedIdentityId string
 @description('Target port the container listens on')
 param targetPort int = 3000
 
+@description('Whether ingress is external (public) or internal only')
+param externalIngress bool = true
+
 @description('CPU cores for the container')
 param cpu string = '0.5'
 
@@ -74,7 +77,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
     configuration: {
       activeRevisionsMode: 'Single'
       ingress: {
-        external: true
+        external: externalIngress
         targetPort: targetPort
         transport: 'auto'
         allowInsecure: false

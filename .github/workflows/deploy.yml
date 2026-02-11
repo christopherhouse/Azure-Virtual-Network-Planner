@@ -24,6 +24,11 @@ on:
         required: false
         default: false
         type: boolean
+      deploy_frontdoor:
+        description: 'Deploy Front Door with Private Link (requires container apps to exist)'
+        required: false
+        default: true
+        type: boolean
       create_release:
         description: 'Create GitHub release for current version'
         required: false
@@ -522,16 +527,246 @@ jobs:
           LOCATION: eastus
 
   # ===========================================================================
-  # Job 6: Create GitHub Release
+  # Job 6a: Deploy Front Door (Dev)
   # ===========================================================================
-  create-release:
-    name: 6. Create Release
-    needs: [build-web, build-api, deploy-web-prod, deploy-api-prod]
+  deploy-frontdoor-dev:
+    name: 6a. Deploy Front Door (Dev)
+    needs: [deploy-web-dev, deploy-api-dev]
+    runs-on: ubuntu-latest
+    if: |
+      always() && !cancelled() && 
+      needs.deploy-web-dev.result == 'success' && 
+      needs.deploy-api-dev.result == 'success' &&
+      (github.event_name == 'push' || github.event.inputs.deploy_frontdoor == 'true')
+    environment: development
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get Container App FQDNs and Environment Details
+        id: get-endpoints
+        run: |
+          echo "🔍 Getting Container Apps Environment details..."
+          CAE_NAME="cae-vnetplanner-dev"
+          WEB_APP_NAME="ca-vnetplanner-web-dev"
+          API_APP_NAME="ca-vnetplanner-api-dev"
+          
+          # Get Container Apps Environment ID
+          CAE_ID=$(az containerapp env show \
+            --name "$CAE_NAME" \
+            --resource-group "${{ vars.RESOURCE_GROUP }}" \
+            --query "id" -o tsv)
+          echo "cae_id=$CAE_ID" >> $GITHUB_OUTPUT
+          
+          # Get Container Apps Environment location
+          CAE_LOCATION=$(az containerapp env show \
+            --name "$CAE_NAME" \
+            --resource-group "${{ vars.RESOURCE_GROUP }}" \
+            --query "location" -o tsv)
+          echo "cae_location=$CAE_LOCATION" >> $GITHUB_OUTPUT
+          
+          # Get Web App FQDN
+          WEB_FQDN=$(az containerapp show \
+            --name "$WEB_APP_NAME" \
+            --resource-group "${{ vars.RESOURCE_GROUP }}" \
+            --query "properties.configuration.ingress.fqdn" -o tsv)
+          echo "web_fqdn=$WEB_FQDN" >> $GITHUB_OUTPUT
+          
+          # Get API App FQDN
+          API_FQDN=$(az containerapp show \
+            --name "$API_APP_NAME" \
+            --resource-group "${{ vars.RESOURCE_GROUP }}" \
+            --query "properties.configuration.ingress.fqdn" -o tsv)
+          echo "api_fqdn=$API_FQDN" >> $GITHUB_OUTPUT
+          
+          # Get WAF Policy ID
+          WAF_POLICY_ID=$(az network front-door waf-policy show \
+            --name "wafvnetplannerdev" \
+            --resource-group "${{ vars.RESOURCE_GROUP }}" \
+            --query "id" -o tsv 2>/dev/null || echo "")
+          echo "waf_policy_id=$WAF_POLICY_ID" >> $GITHUB_OUTPUT
+          
+          echo "✅ Container Apps Environment ID: $CAE_ID"
+          echo "✅ Web FQDN: $WEB_FQDN"
+          echo "✅ API FQDN: $API_FQDN"
+          echo "✅ WAF Policy ID: $WAF_POLICY_ID"
+
+      - name: Deploy Front Door
+        uses: azure/arm-deploy@v2
+        with:
+          resourceGroupName: ${{ vars.RESOURCE_GROUP }}
+          template: ./infra/front-door-deployment.bicep
+          parameters: |
+            environment=dev
+            location=${{ steps.get-endpoints.outputs.cae_location }}
+            webAppHostname=${{ steps.get-endpoints.outputs.web_fqdn }}
+            apiAppHostname=${{ steps.get-endpoints.outputs.api_fqdn }}
+            containerAppsEnvironmentId=${{ steps.get-endpoints.outputs.cae_id }}
+            wafPolicyId=${{ steps.get-endpoints.outputs.waf_policy_id }}
+          deploymentName: frontdoor-dev-${{ github.run_id }}
+          failOnStdErr: false
+
+      - name: Approve Private Link Connections
+        run: |
+          echo "🔗 Approving Private Link connections..."
+          CAE_NAME="cae-vnetplanner-dev"
+          
+          # Wait for private endpoints to be created
+          sleep 30
+          
+          # Get and approve all pending private endpoint connections
+          PENDING_CONNECTIONS=$(az containerapp env show \
+            --name "$CAE_NAME" \
+            --resource-group "${{ vars.RESOURCE_GROUP }}" \
+            --query "properties.privateEndpointConnections[?properties.privateLinkServiceConnectionState.status=='Pending'].name" -o tsv)
+          
+          for CONN_NAME in $PENDING_CONNECTIONS; do
+            echo "✅ Approving connection: $CONN_NAME"
+            az containerapp env update \
+              --name "$CAE_NAME" \
+              --resource-group "${{ vars.RESOURCE_GROUP }}" \
+              --private-endpoint-connection-name "$CONN_NAME" \
+              --private-endpoint-connection-approval-status "Approved" \
+              --output none
+          done
+          
+          echo "✅ All Private Link connections approved!"
+
+  # ===========================================================================
+  # Job 6b: Deploy Front Door (Prod)
+  # ===========================================================================
+  deploy-frontdoor-prod:
+    name: 6b. Deploy Front Door (Prod)
+    needs: [deploy-web-prod, deploy-api-prod, deploy-frontdoor-dev]
     runs-on: ubuntu-latest
     if: |
       always() && !cancelled() && 
       needs.deploy-web-prod.result == 'success' && 
       needs.deploy-api-prod.result == 'success' &&
+      (needs.deploy-frontdoor-dev.result == 'success' || needs.deploy-frontdoor-dev.result == 'skipped') &&
+      (github.event_name == 'push' || github.event.inputs.deploy_frontdoor == 'true')
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get Container App FQDNs and Environment Details
+        id: get-endpoints
+        run: |
+          echo "🔍 Getting Container Apps Environment details..."
+          CAE_NAME="cae-vnetplanner-prod"
+          WEB_APP_NAME="ca-vnetplanner-web-prod"
+          API_APP_NAME="ca-vnetplanner-api-prod"
+          
+          # Get Container Apps Environment ID
+          CAE_ID=$(az containerapp env show \
+            --name "$CAE_NAME" \
+            --resource-group "${{ vars.RESOURCE_GROUP }}" \
+            --query "id" -o tsv)
+          echo "cae_id=$CAE_ID" >> $GITHUB_OUTPUT
+          
+          # Get Container Apps Environment location
+          CAE_LOCATION=$(az containerapp env show \
+            --name "$CAE_NAME" \
+            --resource-group "${{ vars.RESOURCE_GROUP }}" \
+            --query "location" -o tsv)
+          echo "cae_location=$CAE_LOCATION" >> $GITHUB_OUTPUT
+          
+          # Get Web App FQDN
+          WEB_FQDN=$(az containerapp show \
+            --name "$WEB_APP_NAME" \
+            --resource-group "${{ vars.RESOURCE_GROUP }}" \
+            --query "properties.configuration.ingress.fqdn" -o tsv)
+          echo "web_fqdn=$WEB_FQDN" >> $GITHUB_OUTPUT
+          
+          # Get API App FQDN
+          API_FQDN=$(az containerapp show \
+            --name "$API_APP_NAME" \
+            --resource-group "${{ vars.RESOURCE_GROUP }}" \
+            --query "properties.configuration.ingress.fqdn" -o tsv)
+          echo "api_fqdn=$API_FQDN" >> $GITHUB_OUTPUT
+          
+          # Get WAF Policy ID
+          WAF_POLICY_ID=$(az network front-door waf-policy show \
+            --name "wafvnetplannerprod" \
+            --resource-group "${{ vars.RESOURCE_GROUP }}" \
+            --query "id" -o tsv 2>/dev/null || echo "")
+          echo "waf_policy_id=$WAF_POLICY_ID" >> $GITHUB_OUTPUT
+          
+          echo "✅ Container Apps Environment ID: $CAE_ID"
+          echo "✅ Web FQDN: $WEB_FQDN"
+          echo "✅ API FQDN: $API_FQDN"
+          echo "✅ WAF Policy ID: $WAF_POLICY_ID"
+
+      - name: Deploy Front Door
+        uses: azure/arm-deploy@v2
+        with:
+          resourceGroupName: ${{ vars.RESOURCE_GROUP }}
+          template: ./infra/front-door-deployment.bicep
+          parameters: |
+            environment=prod
+            location=${{ steps.get-endpoints.outputs.cae_location }}
+            webAppHostname=${{ steps.get-endpoints.outputs.web_fqdn }}
+            apiAppHostname=${{ steps.get-endpoints.outputs.api_fqdn }}
+            containerAppsEnvironmentId=${{ steps.get-endpoints.outputs.cae_id }}
+            wafPolicyId=${{ steps.get-endpoints.outputs.waf_policy_id }}
+          deploymentName: frontdoor-prod-${{ github.run_id }}
+          failOnStdErr: false
+
+      - name: Approve Private Link Connections
+        run: |
+          echo "🔗 Approving Private Link connections..."
+          CAE_NAME="cae-vnetplanner-prod"
+          
+          # Wait for private endpoints to be created
+          sleep 30
+          
+          # Get and approve all pending private endpoint connections
+          PENDING_CONNECTIONS=$(az containerapp env show \
+            --name "$CAE_NAME" \
+            --resource-group "${{ vars.RESOURCE_GROUP }}" \
+            --query "properties.privateEndpointConnections[?properties.privateLinkServiceConnectionState.status=='Pending'].name" -o tsv)
+          
+          for CONN_NAME in $PENDING_CONNECTIONS; do
+            echo "✅ Approving connection: $CONN_NAME"
+            az containerapp env update \
+              --name "$CAE_NAME" \
+              --resource-group "${{ vars.RESOURCE_GROUP }}" \
+              --private-endpoint-connection-name "$CONN_NAME" \
+              --private-endpoint-connection-approval-status "Approved" \
+              --output none
+          done
+          
+          echo "✅ All Private Link connections approved!"
+
+  # ===========================================================================
+  # Job 7: Create GitHub Release
+  # ===========================================================================
+  create-release:
+    name: 7. Create Release
+    needs: [build-web, build-api, deploy-web-prod, deploy-api-prod, deploy-frontdoor-prod]
+    runs-on: ubuntu-latest
+    if: |
+      always() && !cancelled() && 
+      needs.deploy-web-prod.result == 'success' &&
+      needs.deploy-api-prod.result == 'success' &&
+      (needs.deploy-frontdoor-prod.result == 'success' || needs.deploy-frontdoor-prod.result == 'skipped') &&
       github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true'
 
     steps:
