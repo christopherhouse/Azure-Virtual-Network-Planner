@@ -46,7 +46,7 @@ var appInsightsName = 'appi-${resourceSuffix}'
 var vnetName = 'vnet-${resourceSuffix}'
 var nsgAcaName = 'nsg-aca-${resourceSuffix}'
 var nsgPeName = 'nsg-pe-${resourceSuffix}'
-var wafPolicyName = 'wafpol-${resourceSuffix}'
+var wafPolicyName = replace('wafpol${resourceSuffix}', '-', '')
 
 // Merge default tags with provided tags
 var defaultTags = {
