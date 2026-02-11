@@ -41,11 +41,7 @@ export class ApiError extends Error {
 /**
  * Make an API request with user authentication
  */
-async function apiRequest<T>(
-  method: string,
-  path: string,
-  body?: unknown
-): Promise<T> {
+async function apiRequest<T>(method: string, path: string, body?: unknown): Promise<T> {
   const userId = getUserId();
   if (!userId) {
     throw new ApiError('User ID not available', 401);
@@ -129,10 +125,7 @@ export async function getProject(projectId: string): Promise<Project> {
 /**
  * Create a new project
  */
-export async function createProject(
-  name: string,
-  description: string = ''
-): Promise<Project> {
+export async function createProject(name: string, description: string = ''): Promise<Project> {
   return apiRequest<Project>('POST', '/projects', { name, description });
 }
 

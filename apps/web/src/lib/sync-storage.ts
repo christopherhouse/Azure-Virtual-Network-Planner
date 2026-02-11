@@ -32,7 +32,7 @@ type SyncListener = (state: SyncState) => void;
 const listeners: Set<SyncListener> = new Set();
 
 function notifyListeners(): void {
-  listeners.forEach((listener) => listener({ ...syncState }));
+  listeners.forEach(listener => listener({ ...syncState }));
 }
 
 /**
@@ -102,7 +102,7 @@ export async function loadAppState(): Promise<AppState> {
 
     // Fetch full project details for each project
     const projects: Project[] = await Promise.all(
-      response.projects.map((item) => api.getProject(item.id))
+      response.projects.map(item => api.getProject(item.id))
     );
 
     const state: AppState = {
@@ -185,10 +185,7 @@ export async function saveAppState(state: AppState): Promise<void> {
 /**
  * Create a project - API first if available
  */
-export async function createProjectSync(
-  name: string,
-  description: string = ''
-): Promise<Project> {
+export async function createProjectSync(name: string, description: string = ''): Promise<Project> {
   if (syncState.mode === 'local') {
     // Use the local storage createProject function
     const { createProject } = await import('./storage');

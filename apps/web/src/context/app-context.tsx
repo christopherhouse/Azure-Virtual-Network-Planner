@@ -105,7 +105,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Subscribe to sync state changes
   useEffect(() => {
-    const unsubscribe = subscribeSyncState((syncState) => {
+    const unsubscribe = subscribeSyncState(syncState => {
       setSyncStatus(syncState.status);
       setIsOnline(syncState.status !== 'offline');
     });
@@ -132,7 +132,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoaded) {
       // Use async save but don't await (fire and forget for UI responsiveness)
-      saveSyncState(state).catch((error) => {
+      saveSyncState(state).catch(error => {
         console.error('Failed to sync state:', error);
         // Always save to local storage as backup
         saveLocalState(state);
@@ -155,7 +155,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const removeProject = useCallback((projectId: string) => {
     // Delete from API in background
-    deleteProjectSync(projectId).catch((error) => {
+    deleteProjectSync(projectId).catch(error => {
       console.error('Failed to delete project from API:', error);
     });
     setState(prev => deleteProject(prev, projectId));

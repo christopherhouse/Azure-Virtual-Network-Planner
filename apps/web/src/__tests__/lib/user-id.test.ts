@@ -141,10 +141,7 @@ describe('User ID Module', () => {
     });
 
     it('should return true when localStorage has valid UUID', () => {
-      localStorage.setItem(
-        'vnetplanner_user_id',
-        'abcdefab-1234-4567-89ab-abcdefabcdef'
-      );
+      localStorage.setItem('vnetplanner_user_id', 'abcdefab-1234-4567-89ab-abcdefabcdef');
 
       expect(hasUserId()).toBe(true);
     });

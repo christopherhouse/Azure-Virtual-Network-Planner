@@ -1,19 +1,15 @@
 """Tests for projects API endpoints."""
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from collections.abc import Callable, Generator
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 
+from vnetplanner_api.cosmos import get_cosmos_service
 from vnetplanner_api.main import app
-
-
-@pytest.fixture
-def client() -> TestClient:
-    """Create a test client for the FastAPI app."""
-    return TestClient(app)
 
 
 @pytest.fixture
@@ -33,6 +29,23 @@ def mock_cosmos_service() -> MagicMock:
     mock.update_project = AsyncMock()
     mock.delete_project = AsyncMock(return_value=True)
     return mock
+
+
+@pytest.fixture
+def override_cosmos() -> Generator[Callable[[MagicMock], None], None, None]:
+    """Fixture to override cosmos service dependency."""
+    def _override(mock: MagicMock) -> None:
+        app.dependency_overrides[get_cosmos_service] = lambda: mock
+
+    yield _override
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def client() -> Generator[TestClient, None, None]:
+    """Create a test client for the FastAPI app."""
+    yield TestClient(app)
+    app.dependency_overrides.clear()
 
 
 class TestProjectsEndpointAuth:
@@ -58,26 +71,25 @@ class TestListProjects:
     """Tests for GET /api/2025-02-11/projects."""
 
     def test_list_projects_returns_empty_when_no_cosmos(
-        self, client: TestClient, valid_user_id: str
+        self, client: TestClient, valid_user_id: str, override_cosmos: Callable[[MagicMock], None]
     ) -> None:
         """Test that list returns empty when Cosmos is not configured."""
-        with patch("vnetplanner_api.routers.projects.get_cosmos_service") as mock_get:
-            mock_service = MagicMock()
-            mock_service.is_configured.return_value = False
-            mock_get.return_value = mock_service
+        mock_service = MagicMock()
+        mock_service.is_configured.return_value = False
+        override_cosmos(mock_service)
 
-            response = client.get(
-                "/api/2025-02-11/projects",
-                headers={"X-User-ID": valid_user_id},
-            )
+        response = client.get(
+            "/api/2025-02-11/projects",
+            headers={"X-User-ID": valid_user_id},
+        )
 
-            assert response.status_code == status.HTTP_200_OK
-            data = response.json()
-            assert data["projects"] == []
-            assert data["totalCount"] == 0
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["projects"] == []
+        assert data["totalCount"] == 0
 
     def test_list_projects_returns_items(
-        self, client: TestClient, valid_user_id: str
+        self, client: TestClient, valid_user_id: str, override_cosmos: Callable[[MagicMock], None]
     ) -> None:
         """Test that list returns projects from Cosmos."""
         mock_projects = [
@@ -95,46 +107,44 @@ class TestListProjects:
             }
         ]
 
-        with patch("vnetplanner_api.routers.projects.get_cosmos_service") as mock_get:
-            mock_service = MagicMock()
-            mock_service.is_configured.return_value = True
-            mock_service.list_projects = AsyncMock(return_value=mock_projects)
-            mock_get.return_value = mock_service
+        mock_service = MagicMock()
+        mock_service.is_configured.return_value = True
+        mock_service.list_projects = AsyncMock(return_value=mock_projects)
+        override_cosmos(mock_service)
 
-            response = client.get(
-                "/api/2025-02-11/projects",
-                headers={"X-User-ID": valid_user_id},
-            )
+        response = client.get(
+            "/api/2025-02-11/projects",
+            headers={"X-User-ID": valid_user_id},
+        )
 
-            assert response.status_code == status.HTTP_200_OK
-            data = response.json()
-            assert len(data["projects"]) == 1
-            assert data["totalCount"] == 1
-            assert data["projects"][0]["name"] == "Test Project"
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert len(data["projects"]) == 1
+        assert data["totalCount"] == 1
+        assert data["projects"][0]["name"] == "Test Project"
 
 
 class TestGetProject:
     """Tests for GET /api/2025-02-11/projects/{project_id}."""
 
     def test_get_project_not_found(
-        self, client: TestClient, valid_user_id: str
+        self, client: TestClient, valid_user_id: str, override_cosmos: Callable[[MagicMock], None]
     ) -> None:
         """Test 404 when project doesn't exist."""
-        with patch("vnetplanner_api.routers.projects.get_cosmos_service") as mock_get:
-            mock_service = MagicMock()
-            mock_service.is_configured.return_value = True
-            mock_service.get_project = AsyncMock(return_value=None)
-            mock_get.return_value = mock_service
+        mock_service = MagicMock()
+        mock_service.is_configured.return_value = True
+        mock_service.get_project = AsyncMock(return_value=None)
+        override_cosmos(mock_service)
 
-            response = client.get(
-                "/api/2025-02-11/projects/nonexistent-id",
-                headers={"X-User-ID": valid_user_id},
-            )
+        response = client.get(
+            "/api/2025-02-11/projects/nonexistent-id",
+            headers={"X-User-ID": valid_user_id},
+        )
 
-            assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_get_project_success(
-        self, client: TestClient, valid_user_id: str
+        self, client: TestClient, valid_user_id: str, override_cosmos: Callable[[MagicMock], None]
     ) -> None:
         """Test successful project retrieval."""
         mock_doc = {
@@ -150,108 +160,103 @@ class TestGetProject:
             },
         }
 
-        with patch("vnetplanner_api.routers.projects.get_cosmos_service") as mock_get:
-            mock_service = MagicMock()
-            mock_service.is_configured.return_value = True
-            mock_service.get_project = AsyncMock(return_value=mock_doc)
-            mock_get.return_value = mock_service
+        mock_service = MagicMock()
+        mock_service.is_configured.return_value = True
+        mock_service.get_project = AsyncMock(return_value=mock_doc)
+        override_cosmos(mock_service)
 
-            response = client.get(
-                "/api/2025-02-11/projects/proj-1",
-                headers={"X-User-ID": valid_user_id},
-            )
+        response = client.get(
+            "/api/2025-02-11/projects/proj-1",
+            headers={"X-User-ID": valid_user_id},
+        )
 
-            assert response.status_code == status.HTTP_200_OK
-            data = response.json()
-            assert data["id"] == "proj-1"
-            assert data["name"] == "Test Project"
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["id"] == "proj-1"
+        assert data["name"] == "Test Project"
 
 
 class TestCreateProject:
     """Tests for POST /api/2025-02-11/projects."""
 
     def test_create_project_success(
-        self, client: TestClient, valid_user_id: str
+        self, client: TestClient, valid_user_id: str, override_cosmos: Callable[[MagicMock], None]
     ) -> None:
         """Test successful project creation."""
-        with patch("vnetplanner_api.routers.projects.get_cosmos_service") as mock_get:
-            mock_service = MagicMock()
-            mock_service.is_configured.return_value = True
-            mock_service.create_project = AsyncMock(return_value={})
-            mock_get.return_value = mock_service
+        mock_service = MagicMock()
+        mock_service.is_configured.return_value = True
+        mock_service.create_project = AsyncMock(return_value={})
+        override_cosmos(mock_service)
 
-            response = client.post(
-                "/api/2025-02-11/projects",
-                headers={"X-User-ID": valid_user_id},
-                json={"name": "New Project", "description": "A new project"},
-            )
+        response = client.post(
+            "/api/2025-02-11/projects",
+            headers={"X-User-ID": valid_user_id},
+            json={"name": "New Project", "description": "A new project"},
+        )
 
-            assert response.status_code == status.HTTP_201_CREATED
-            data = response.json()
-            assert data["name"] == "New Project"
-            assert data["description"] == "A new project"
-            assert "id" in data
-            assert "createdAt" in data
-            assert "updatedAt" in data
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        assert data["name"] == "New Project"
+        assert data["description"] == "A new project"
+        assert "id" in data
+        assert "createdAt" in data
+        assert "updatedAt" in data
 
     def test_create_project_validates_name(
-        self, client: TestClient, valid_user_id: str
+        self, client: TestClient, valid_user_id: str, override_cosmos: Callable[[MagicMock], None]
     ) -> None:
         """Test that empty name is rejected."""
-        with patch("vnetplanner_api.routers.projects.get_cosmos_service") as mock_get:
-            mock_service = MagicMock()
-            mock_service.is_configured.return_value = True
-            mock_get.return_value = mock_service
+        mock_service = MagicMock()
+        mock_service.is_configured.return_value = True
+        override_cosmos(mock_service)
 
-            response = client.post(
-                "/api/2025-02-11/projects",
-                headers={"X-User-ID": valid_user_id},
-                json={"name": "", "description": ""},
-            )
+        response = client.post(
+            "/api/2025-02-11/projects",
+            headers={"X-User-ID": valid_user_id},
+            json={"name": "", "description": ""},
+        )
 
-            assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     def test_create_project_service_unavailable(
-        self, client: TestClient, valid_user_id: str
+        self, client: TestClient, valid_user_id: str, override_cosmos: Callable[[MagicMock], None]
     ) -> None:
         """Test 503 when Cosmos is not configured."""
-        with patch("vnetplanner_api.routers.projects.get_cosmos_service") as mock_get:
-            mock_service = MagicMock()
-            mock_service.is_configured.return_value = False
-            mock_get.return_value = mock_service
+        mock_service = MagicMock()
+        mock_service.is_configured.return_value = False
+        override_cosmos(mock_service)
 
-            response = client.post(
-                "/api/2025-02-11/projects",
-                headers={"X-User-ID": valid_user_id},
-                json={"name": "New Project"},
-            )
+        response = client.post(
+            "/api/2025-02-11/projects",
+            headers={"X-User-ID": valid_user_id},
+            json={"name": "New Project"},
+        )
 
-            assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
 
 
 class TestUpdateProject:
     """Tests for PUT /api/2025-02-11/projects/{project_id}."""
 
     def test_update_project_not_found(
-        self, client: TestClient, valid_user_id: str
+        self, client: TestClient, valid_user_id: str, override_cosmos: Callable[[MagicMock], None]
     ) -> None:
         """Test 404 when project doesn't exist."""
-        with patch("vnetplanner_api.routers.projects.get_cosmos_service") as mock_get:
-            mock_service = MagicMock()
-            mock_service.is_configured.return_value = True
-            mock_service.get_project = AsyncMock(return_value=None)
-            mock_get.return_value = mock_service
+        mock_service = MagicMock()
+        mock_service.is_configured.return_value = True
+        mock_service.get_project = AsyncMock(return_value=None)
+        override_cosmos(mock_service)
 
-            response = client.put(
-                "/api/2025-02-11/projects/nonexistent",
-                headers={"X-User-ID": valid_user_id},
-                json={"name": "Updated Name"},
-            )
+        response = client.put(
+            "/api/2025-02-11/projects/nonexistent",
+            headers={"X-User-ID": valid_user_id},
+            json={"name": "Updated Name"},
+        )
 
-            assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_update_project_success(
-        self, client: TestClient, valid_user_id: str
+        self, client: TestClient, valid_user_id: str, override_cosmos: Callable[[MagicMock], None]
     ) -> None:
         """Test successful project update."""
         mock_doc = {
@@ -267,59 +272,56 @@ class TestUpdateProject:
             },
         }
 
-        with patch("vnetplanner_api.routers.projects.get_cosmos_service") as mock_get:
-            mock_service = MagicMock()
-            mock_service.is_configured.return_value = True
-            mock_service.get_project = AsyncMock(return_value=mock_doc)
-            mock_service.update_project = AsyncMock(return_value={})
-            mock_get.return_value = mock_service
+        mock_service = MagicMock()
+        mock_service.is_configured.return_value = True
+        mock_service.get_project = AsyncMock(return_value=mock_doc)
+        mock_service.update_project = AsyncMock(return_value={})
+        override_cosmos(mock_service)
 
-            response = client.put(
-                "/api/2025-02-11/projects/proj-1",
-                headers={"X-User-ID": valid_user_id},
-                json={"name": "Updated Name"},
-            )
+        response = client.put(
+            "/api/2025-02-11/projects/proj-1",
+            headers={"X-User-ID": valid_user_id},
+            json={"name": "Updated Name"},
+        )
 
-            assert response.status_code == status.HTTP_200_OK
-            data = response.json()
-            assert data["name"] == "Updated Name"
-            # Description should remain unchanged
-            assert data["description"] == "Original description"
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["name"] == "Updated Name"
+        # Description should remain unchanged
+        assert data["description"] == "Original description"
 
 
 class TestDeleteProject:
     """Tests for DELETE /api/2025-02-11/projects/{project_id}."""
 
     def test_delete_project_not_found(
-        self, client: TestClient, valid_user_id: str
+        self, client: TestClient, valid_user_id: str, override_cosmos: Callable[[MagicMock], None]
     ) -> None:
         """Test 404 when project doesn't exist."""
-        with patch("vnetplanner_api.routers.projects.get_cosmos_service") as mock_get:
-            mock_service = MagicMock()
-            mock_service.is_configured.return_value = True
-            mock_service.delete_project = AsyncMock(return_value=False)
-            mock_get.return_value = mock_service
+        mock_service = MagicMock()
+        mock_service.is_configured.return_value = True
+        mock_service.delete_project = AsyncMock(return_value=False)
+        override_cosmos(mock_service)
 
-            response = client.delete(
-                "/api/2025-02-11/projects/nonexistent",
-                headers={"X-User-ID": valid_user_id},
-            )
+        response = client.delete(
+            "/api/2025-02-11/projects/nonexistent",
+            headers={"X-User-ID": valid_user_id},
+        )
 
-            assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_delete_project_success(
-        self, client: TestClient, valid_user_id: str
+        self, client: TestClient, valid_user_id: str, override_cosmos: Callable[[MagicMock], None]
     ) -> None:
         """Test successful project deletion."""
-        with patch("vnetplanner_api.routers.projects.get_cosmos_service") as mock_get:
-            mock_service = MagicMock()
-            mock_service.is_configured.return_value = True
-            mock_service.delete_project = AsyncMock(return_value=True)
-            mock_get.return_value = mock_service
+        mock_service = MagicMock()
+        mock_service.is_configured.return_value = True
+        mock_service.delete_project = AsyncMock(return_value=True)
+        override_cosmos(mock_service)
 
-            response = client.delete(
-                "/api/2025-02-11/projects/proj-1",
-                headers={"X-User-ID": valid_user_id},
-            )
+        response = client.delete(
+            "/api/2025-02-11/projects/proj-1",
+            headers={"X-User-ID": valid_user_id},
+        )
 
-            assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_204_NO_CONTENT

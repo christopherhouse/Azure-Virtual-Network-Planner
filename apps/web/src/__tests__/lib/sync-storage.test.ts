@@ -90,9 +90,7 @@ describe('Sync Storage', () => {
     });
 
     it('should handle API check errors gracefully', async () => {
-      vi.mocked(apiModule.checkApiHealth).mockRejectedValueOnce(
-        new Error('Network error')
-      );
+      vi.mocked(apiModule.checkApiHealth).mockRejectedValueOnce(new Error('Network error'));
 
       const mode = await initializeStorage();
 
@@ -163,9 +161,7 @@ describe('Sync Storage', () => {
 
     it('should fallback to localStorage on API error', async () => {
       vi.mocked(apiModule.checkApiHealth).mockResolvedValueOnce(true);
-      vi.mocked(apiModule.listProjects).mockRejectedValueOnce(
-        new Error('API error')
-      );
+      vi.mocked(apiModule.listProjects).mockRejectedValueOnce(new Error('API error'));
       vi.mocked(storageModule.loadAppState).mockReturnValueOnce({
         projects: [
           {
@@ -224,7 +220,7 @@ describe('Sync Storage', () => {
       // First initialize to local mode explicitly
       vi.mocked(userIdModule.getUserId).mockReturnValueOnce('');
       await initializeStorage();
-      
+
       // Now test saving
       vi.mocked(userIdModule.getUserId).mockReturnValue('12345678-1234-4567-89ab-123456789abc');
 
@@ -248,7 +244,7 @@ describe('Sync Storage', () => {
       const mode = await initializeStorage();
       // If initialization didn't return 'api', skip the API assertion
       // This handles test isolation issues with module-level state
-      
+
       const state: AppState = {
         projects: [
           {
@@ -264,9 +260,7 @@ describe('Sync Storage', () => {
         version: '1.0.0',
       };
 
-      vi.mocked(apiModule.updateProject).mockResolvedValueOnce(
-        state.projects[0]
-      );
+      vi.mocked(apiModule.updateProject).mockResolvedValueOnce(state.projects[0]);
 
       await saveAppState(state);
 
