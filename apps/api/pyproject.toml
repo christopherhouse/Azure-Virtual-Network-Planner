@@ -5,11 +5,14 @@ description = "Backend API for Azure Virtual Network Planner"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "azure-cosmos>=4.9.0",
+    "azure-identity>=1.19.0",
     "azure-monitor-opentelemetry-exporter>=1.0.0b48",
     "fastapi>=0.128.6",
     "opentelemetry-api>=1.39.0",
     "opentelemetry-instrumentation-fastapi>=0.60b0",
     "opentelemetry-sdk>=1.39.0",
+    "pydantic>=2.10.0",
     "uvicorn[standard]>=0.40.0",
 ]
 
