@@ -36,6 +36,7 @@ VNet: vnet-vnetplanner-{env} (10.0.0.0/23)
 | 6 | Update `main.bicep` to wire VNet → NSGs → ACA Env → WAF | 🏗️ Stratus | ✅ complete |
 | 7 | Update `container-app.bicep` for internal ingress support | 🏗️ Stratus | ✅ complete |
 | 8 | Update parameter files | 🏗️ Stratus | ✅ complete |
+| 9 | Update CI/CD workflow with Front Door deployment + Private Link approval | 🏗️ Stratus | ✅ complete |
 
 ## Key Decisions
 - Front Door Premium required for Private Link to ACA origins
