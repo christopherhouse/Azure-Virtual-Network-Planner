@@ -248,6 +248,16 @@ deploy_app() {
             --output none
         )
         
+        # Configure CORS for SPA access
+        az containerapp ingress cors update \
+            --name "$CONTAINER_APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --allowed-origins "https://azvnetplanner.chrishou.se" \
+            --allowed-methods "GET" "POST" "PUT" "DELETE" "OPTIONS" \
+            --allowed-headers "*" \
+            --allow-credentials true \
+            --output none
+        
         if [[ ${#env_vars_array[@]} -gt 0 ]]; then
             update_cmd+=(--set-env-vars "${env_vars_array[@]}")
         fi
@@ -286,6 +296,20 @@ deploy_app() {
     fi
     
     print_success "Container App deployed successfully!"
+    
+    # Configure CORS for SPA access (runs after create to ensure app exists)
+    if [[ "$APP_EXISTS" == "false" ]]; then
+        print_step "Configuring CORS for SPA access..."
+        az containerapp ingress cors update \
+            --name "$CONTAINER_APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --allowed-origins "https://azvnetplanner.chrishou.se" \
+            --allowed-methods "GET" "POST" "PUT" "DELETE" "OPTIONS" \
+            --allowed-headers "*" \
+            --allow-credentials true \
+            --output none
+        print_success "CORS configured for https://azvnetplanner.chrishou.se"
+    fi
     
     # Configure health probe
     configure_health_probe
