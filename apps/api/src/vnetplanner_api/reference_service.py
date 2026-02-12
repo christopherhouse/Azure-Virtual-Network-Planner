@@ -98,7 +98,8 @@ class ReferenceDataService:
         cached = await redis.get(cache_key)
         if cached:
             try:
-                return json.loads(cached)
+                result: dict[str, Any] = json.loads(cached)
+                return result
             except json.JSONDecodeError:
                 logger.warning("Invalid JSON in cache for key: %s", cache_key)
                 await redis.delete(cache_key)

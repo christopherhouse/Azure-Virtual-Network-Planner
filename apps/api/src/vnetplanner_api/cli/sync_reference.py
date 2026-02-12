@@ -23,8 +23,9 @@ import logging
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
-from azure.cosmos import CosmosClient, PartitionKey
+from azure.cosmos import ContainerProxy, CosmosClient, PartitionKey
 from azure.cosmos.exceptions import CosmosResourceExistsError
 from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 
@@ -65,13 +66,14 @@ def ensure_container(client: CosmosClient, database_name: str, container_name: s
         logger.debug("Container already exists: %s", container_name)
 
 
-def load_json_file(file_path: Path) -> dict:
+def load_json_file(file_path: Path) -> dict[str, Any]:
     """Load and parse a JSON file."""
     with open(file_path, encoding="utf-8") as f:
-        return json.load(f)
+        data: dict[str, Any] = json.load(f)
+        return data
 
 
-def upsert_document(container, document: dict) -> None:
+def upsert_document(container: ContainerProxy, document: dict[str, Any]) -> None:
     """Upsert a document to the container."""
     doc_id = document.get("id", "unknown")
     doc_type = document.get("type", "unknown")

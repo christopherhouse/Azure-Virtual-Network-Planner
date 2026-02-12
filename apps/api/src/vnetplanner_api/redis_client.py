@@ -75,15 +75,21 @@ class RedisService:
 
         # Use the token as the password with the special username
         # For Microsoft Entra ID auth, username is the principal ID or a placeholder
-        self._client = redis.Redis(
-            host=self._host,
-            port=self._port,
-            password=access_token,
-            ssl=self._ssl,
-            ssl_cert_reqs="required" if self._ssl else None,
-            decode_responses=True,  # Return strings instead of bytes
-            username=self._client_id if self._client_id else "default",
-        )
+        import ssl as ssl_module
+
+        redis_kwargs: dict[str, Any] = {
+            "host": self._host,
+            "port": self._port,
+            "password": access_token,
+            "ssl": self._ssl,
+            "decode_responses": True,  # Return strings instead of bytes
+            "username": self._client_id if self._client_id else "default",
+        }
+
+        if self._ssl:
+            redis_kwargs["ssl_cert_reqs"] = ssl_module.CERT_REQUIRED
+
+        self._client = redis.Redis(**redis_kwargs)
 
         # Test connection
         self._client.ping()
@@ -115,7 +121,7 @@ class RedisService:
                 logger.debug("Cache hit for key: %s", key)
             else:
                 logger.debug("Cache miss for key: %s", key)
-            return value
+            return str(value) if value is not None else None
         except redis.RedisError as e:
             logger.warning("Redis error on get(%s): %s", key, e)
             return None
@@ -159,9 +165,9 @@ class RedisService:
 
         try:
             client = self._ensure_client()
-            result = client.delete(key)
-            logger.debug("Deleted key: %s (found=%s)", key, result > 0)
-            return result > 0
+            deleted: int = client.delete(key)  # type: ignore[assignment]
+            logger.debug("Deleted key: %s (found=%s)", key, deleted > 0)
+            return deleted > 0
         except redis.RedisError as e:
             logger.warning("Redis error on delete(%s): %s", key, e)
             return False

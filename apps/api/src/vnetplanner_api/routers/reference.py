@@ -64,7 +64,7 @@ async def list_delegations(
         DelegationOption(
             id=item["id"],
             name=item["name"],
-            serviceName=item["serviceName"],
+            service_name=item["serviceName"],
             description=item["description"],
         )
         for item in data.get("data", [])
@@ -72,8 +72,8 @@ async def list_delegations(
 
     return DelegationsResponse(
         delegations=delegations,
-        totalCount=len(delegations),
-        lastUpdated=data.get("lastUpdated", ""),
+        total_count=len(delegations),
+        last_updated=data.get("lastUpdated", ""),
     )
 
 
@@ -114,9 +114,9 @@ async def list_service_endpoints(
     ]
 
     return ServiceEndpointsResponse(
-        serviceEndpoints=endpoints,
-        totalCount=len(endpoints),
-        lastUpdated=data.get("lastUpdated", ""),
+        service_endpoints=endpoints,
+        total_count=len(endpoints),
+        last_updated=data.get("lastUpdated", ""),
     )
 
 
@@ -151,15 +151,15 @@ async def list_regions(
             name=item["name"],
             value=item["value"],
             geography=item["geography"],
-            hasAvailabilityZones=item["hasAvailabilityZones"],
-            isRestricted=item.get("isRestricted"),
+            has_availability_zones=item["hasAvailabilityZones"],
+            is_restricted=item.get("isRestricted"),
         )
         for item in data.get("data", [])
     ]
 
     return RegionsResponse(
         regions=regions,
-        totalCount=len(regions),
-        defaultRegion=data.get("defaultRegion", "eastus"),
-        lastUpdated=data.get("lastUpdated", ""),
+        total_count=len(regions),
+        default_region=data.get("defaultRegion", "eastus"),
+        last_updated=data.get("lastUpdated", ""),
     )
