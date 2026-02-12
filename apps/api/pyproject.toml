@@ -1,6 +1,6 @@
 [project]
 name = "vnetplanner-api"
-version = "0.5.2"
+version = "0.5.4"
 description = "Backend API for Azure Virtual Network Planner"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -31,7 +31,7 @@ dev = [
 api = "vnetplanner_api.main:run"
 
 [tool.ruff]
-target-version = "py312"
+target-version = "0.5.4"
 line-length = 100
 src = ["src", "tests"]
 
@@ -54,7 +54,7 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "0.5.4"
 strict = true
 warn_return_any = true
 warn_unused_ignores = true

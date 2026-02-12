@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
+from vnetplanner_api import __version__
 from vnetplanner_api.cosmos import get_cosmos_service
 from vnetplanner_api.routers import projects_router
 from vnetplanner_api.telemetry import configure_telemetry
@@ -39,7 +40,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title="Azure VNet Planner API",
     description="Backend API for Azure Virtual Network Planner",
-    version="0.1.0",
+    version=__version__,
     lifespan=lifespan,
 )
 

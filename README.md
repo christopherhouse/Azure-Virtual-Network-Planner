@@ -107,6 +107,37 @@ az deployment group create \
    - `CONTAINER_APP_NAME`: Container App name
    - `RESOURCE_GROUP`: Resource group name
 
+## Development
+
+### Version Management
+
+The project uses a single source of truth for versioning:
+
+- **`VERSION`** file at repo root is the source of truth
+- Run `./scripts/sync-version.ps1` to sync versions across all projects
+- Run `./scripts/sync-version.ps1 -Check` to verify versions are in sync
+
+Version locations automatically synced:
+- `apps/web/package.json`
+- `apps/api/pyproject.toml`
+
+The Python API reads its version dynamically from `pyproject.toml` at runtime.
+
+### Pre-commit Hooks
+
+Install pre-commit hooks to ensure version sync on every commit:
+
+```bash
+# Install pre-commit (if not already installed)
+pip install pre-commit
+
+# Install hooks
+pre-commit install
+
+# Run manually
+pre-commit run --all-files
+```
+
 ## Usage
 
 1. **Create a Project**: Start by creating a new project to organize your VNets
