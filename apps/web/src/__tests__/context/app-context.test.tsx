@@ -321,3 +321,87 @@ describe('useApp outside provider', () => {
     consoleSpy.mockRestore();
   });
 });
+
+// Tests for project limit feature
+describe('Project limit', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.clearAllMocks();
+  });
+
+  it('should expose projectCount from state', () => {
+    const { result } = renderHook(() => useApp(), { wrapper });
+
+    expect(result.current.projectCount).toBe(0);
+
+    act(() => {
+      result.current.createNewProject('Project 1');
+    });
+
+    expect(result.current.projectCount).toBe(1);
+
+    act(() => {
+      result.current.createNewProject('Project 2');
+    });
+
+    expect(result.current.projectCount).toBe(2);
+  });
+
+  it('should return canCreateProject=true when under limit', () => {
+    const { result } = renderHook(() => useApp(), { wrapper });
+
+    expect(result.current.canCreateProject).toBe(true);
+
+    // Create 4 projects (under the limit of 5)
+    act(() => {
+      result.current.createNewProject('Project 1');
+      result.current.createNewProject('Project 2');
+      result.current.createNewProject('Project 3');
+      result.current.createNewProject('Project 4');
+    });
+
+    expect(result.current.projectCount).toBe(4);
+    expect(result.current.canCreateProject).toBe(true);
+  });
+
+  it('should return canCreateProject=false when at limit', () => {
+    const { result } = renderHook(() => useApp(), { wrapper });
+
+    // Create 5 projects (at the limit)
+    act(() => {
+      result.current.createNewProject('Project 1');
+      result.current.createNewProject('Project 2');
+      result.current.createNewProject('Project 3');
+      result.current.createNewProject('Project 4');
+      result.current.createNewProject('Project 5');
+    });
+
+    expect(result.current.projectCount).toBe(5);
+    expect(result.current.canCreateProject).toBe(false);
+  });
+
+  it('should allow creating project after deleting when at limit', () => {
+    const { result } = renderHook(() => useApp(), { wrapper });
+
+    // Create 5 projects
+    let firstProjectId: string;
+    act(() => {
+      const p1 = result.current.createNewProject('Project 1');
+      firstProjectId = p1.id;
+      result.current.createNewProject('Project 2');
+      result.current.createNewProject('Project 3');
+      result.current.createNewProject('Project 4');
+      result.current.createNewProject('Project 5');
+    });
+
+    expect(result.current.canCreateProject).toBe(false);
+
+    // Delete one project
+    act(() => {
+      result.current.removeProject(firstProjectId!);
+    });
+
+    expect(result.current.projectCount).toBe(4);
+    expect(result.current.canCreateProject).toBe(true);
+  });
+});

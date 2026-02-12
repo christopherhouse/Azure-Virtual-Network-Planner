@@ -97,6 +97,32 @@ class CosmosDBService:
 
         return items
 
+    async def count_projects(self, user_id: str) -> int:
+        """Count the number of projects for a user.
+
+        Uses COUNT aggregate for efficiency (~1 RU regardless of document count).
+
+        Args:
+            user_id: The user's unique identifier (partition key)
+
+        Returns:
+            Number of projects for the user
+        """
+        container = self._ensure_client()
+
+        query = "SELECT VALUE COUNT(1) FROM c WHERE c.userId = @userId"
+        parameters: list[dict[str, Any]] = [{"name": "@userId", "value": user_id}]
+
+        results = list(
+            container.query_items(
+                query=query,
+                parameters=parameters,
+                partition_key=user_id,
+            )
+        )
+
+        return results[0] if results else 0
+
     async def get_project(self, user_id: str, project_id: str) -> dict[str, Any] | None:
         """Get a specific project by ID.
 

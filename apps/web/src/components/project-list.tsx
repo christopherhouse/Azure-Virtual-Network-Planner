@@ -22,10 +22,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Plus, FolderOpen, MoreVertical, Trash2, Edit, Network } from 'lucide-react';
+import { MAX_PROJECTS_PER_USER } from '@/context/app-context';
 
 export function ProjectList() {
-  const { state, createNewProject, removeProject, setActiveProject, updateProjectDetails } =
+  const { state, createNewProject, removeProject, setActiveProject, updateProjectDetails, canCreateProject } =
     useApp();
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [editProjectId, setEditProjectId] = useState<string | null>(null);
@@ -75,12 +81,29 @@ export function ProjectList() {
           </p>
         </div>
         <Dialog open={newProjectOpen} onOpenChange={setNewProjectOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2 btn-glow">
-              <Plus className="h-4 w-4" />
-              New Project
-            </Button>
-          </DialogTrigger>
+          {canCreateProject ? (
+            <DialogTrigger asChild>
+              <Button className="gap-2 btn-glow">
+                <Plus className="h-4 w-4" />
+                New Project
+              </Button>
+            </DialogTrigger>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={0}>
+                  <Button className="gap-2" disabled>
+                    <Plus className="h-4 w-4" />
+                    New Project
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Maximum of {MAX_PROJECTS_PER_USER} projects reached.</p>
+                <p className="text-muted-foreground text-xs">Delete a project to create a new one.</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Create New Project</DialogTitle>
