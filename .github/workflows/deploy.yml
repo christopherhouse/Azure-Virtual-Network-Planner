@@ -653,7 +653,9 @@ jobs:
               "apiAppHostname": { "value": "${{ steps.get-endpoints.outputs.api_fqdn }}" },
               "containerAppsEnvironmentId": { "value": "${{ steps.get-endpoints.outputs.cae_id }}" },
               "wafPolicyId": { "value": "${{ steps.get-endpoints.outputs.waf_policy_id }}" },
-              "logAnalyticsWorkspaceId": { "value": "${{ steps.get-endpoints.outputs.log_analytics_id }}" }
+              "logAnalyticsWorkspaceId": { "value": "${{ steps.get-endpoints.outputs.log_analytics_id }}" },
+              "customDomainWeb": { "value": "${{ vars.CUSTOM_DOMAIN_WEB || '' }}" },
+              "customDomainApi": { "value": "${{ vars.CUSTOM_DOMAIN_API || '' }}" }
             }
           }
           EOF
@@ -822,7 +824,9 @@ jobs:
               "apiAppHostname": { "value": "${{ steps.get-endpoints.outputs.api_fqdn }}" },
               "containerAppsEnvironmentId": { "value": "${{ steps.get-endpoints.outputs.cae_id }}" },
               "wafPolicyId": { "value": "${{ steps.get-endpoints.outputs.waf_policy_id }}" },
-              "logAnalyticsWorkspaceId": { "value": "${{ steps.get-endpoints.outputs.log_analytics_id }}" }
+              "logAnalyticsWorkspaceId": { "value": "${{ steps.get-endpoints.outputs.log_analytics_id }}" },
+              "customDomainWeb": { "value": "${{ vars.CUSTOM_DOMAIN_WEB || '' }}" },
+              "customDomainApi": { "value": "${{ vars.CUSTOM_DOMAIN_API || '' }}" }
             }
           }
           EOF
