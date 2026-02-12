@@ -263,20 +263,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Azure CLI
-        uses: azure/setup-azure-cli@v1
-
       - name: Install Bicep CLI
         run: az bicep install
 
-      - name: Validate Bicep templates
+      - name: Build main.bicep
         working-directory: ./infra
-        run: |
-          echo "Building main.bicep..."
-          az bicep build --file main.bicep
-          echo "Building front-door-deployment.bicep..."
-          az bicep build --file front-door-deployment.bicep
-          echo "✅ All Bicep templates validated successfully"
+        run: az bicep build --file main.bicep
+
+      - name: Build front-door-deployment.bicep
+        working-directory: ./infra
+        run: az bicep build --file front-door-deployment.bicep
 
   # ===========================================================================
   # Quality Gate Summary
