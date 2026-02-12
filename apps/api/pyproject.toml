@@ -14,6 +14,7 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi>=0.60b0",
     "opentelemetry-sdk>=1.39.0",
     "pydantic>=2.10.0",
+    "redis>=5.2.0",
     "uvicorn[standard]>=0.40.0",
 ]
 
@@ -29,6 +30,7 @@ dev = [
 
 [project.scripts]
 api = "vnetplanner_api.main:run"
+sync-reference-data = "vnetplanner_api.cli.sync_reference:main"
 
 [tool.ruff]
 target-version = "py312"

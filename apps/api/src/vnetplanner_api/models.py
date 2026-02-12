@@ -26,6 +26,49 @@ class ServiceEndpointOption(BaseModel):
     description: str
 
 
+class AzureRegion(BaseModel):
+    """Represents an Azure region."""
+
+    name: str
+    value: str
+    geography: str
+    has_availability_zones: Annotated[bool, Field(alias="hasAvailabilityZones")]
+    is_restricted: Annotated[bool | None, Field(alias="isRestricted")] = None
+
+    model_config = {"populate_by_name": True}
+
+
+class DelegationsResponse(BaseModel):
+    """Response model for delegations reference data."""
+
+    delegations: list[DelegationOption]
+    total_count: Annotated[int, Field(alias="totalCount")]
+    last_updated: Annotated[str, Field(alias="lastUpdated")]
+
+    model_config = {"populate_by_name": True}
+
+
+class ServiceEndpointsResponse(BaseModel):
+    """Response model for service endpoints reference data."""
+
+    service_endpoints: Annotated[list[ServiceEndpointOption], Field(alias="serviceEndpoints")]
+    total_count: Annotated[int, Field(alias="totalCount")]
+    last_updated: Annotated[str, Field(alias="lastUpdated")]
+
+    model_config = {"populate_by_name": True}
+
+
+class RegionsResponse(BaseModel):
+    """Response model for regions reference data."""
+
+    regions: list[AzureRegion]
+    total_count: Annotated[int, Field(alias="totalCount")]
+    default_region: Annotated[str, Field(alias="defaultRegion")]
+    last_updated: Annotated[str, Field(alias="lastUpdated")]
+
+    model_config = {"populate_by_name": True}
+
+
 class Subnet(BaseModel):
     """Represents a subnet within a VNet."""
 

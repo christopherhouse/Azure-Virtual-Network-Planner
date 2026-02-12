@@ -37,6 +37,9 @@ RUN groupadd --gid 1001 appgroup && \
 COPY --from=builder --chown=appuser:appgroup /app/.venv /app/.venv
 COPY --from=builder --chown=appuser:appgroup /app/src /app/src
 
+# Copy reference data files for sync capability
+COPY --chown=appuser:appgroup data /app/data
+
 # Set PATH to use the virtual environment
 ENV PATH="/app/.venv/bin:$PATH"
 
