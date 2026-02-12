@@ -121,7 +121,8 @@ class CosmosDBService:
             )
         )
 
-        return results[0] if results else 0
+        # SELECT VALUE returns scalar directly; SDK types it as dict but it's actually int
+        return int(results[0]) if results else 0  # type: ignore[call-overload]
 
     async def get_project(self, user_id: str, project_id: str) -> dict[str, Any] | None:
         """Get a specific project by ID.

@@ -54,7 +54,7 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.mypy]
-python_version = "0.5.4"
+python_version = "3.12"
 strict = true
 warn_return_any = true
 warn_unused_ignores = true
