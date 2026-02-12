@@ -86,16 +86,18 @@ resource redisDatabase 'Microsoft.Cache/redisEnterprise/databases@2024-09-01-pre
   }
 }
 
-// Role Assignment - Grant managed identity Redis Data Contributor access
-// Built-in role: Redis Cache Contributor (e21d8544-eee5-4c95-bbf3-fb1c4c6b7a4c)
-// For data plane access, use: Redis Data Owner (e9e66c7c-c4e6-4b3d-8c3a-d6e2e3e6e6e6) - custom, or use access policies
-resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: redisEnterprise
-  name: guid(redisEnterprise.id, principalId, 'Redis-Data-Owner')
+// Access Policy Assignment for Managed Identity
+// Azure Managed Redis uses accessPolicyAssignments (NOT RBAC role assignments) for data plane access
+// The 'default' access policy provides full data access (equivalent to Data Owner)
+// See: https://learn.microsoft.com/azure/templates/microsoft.cache/redisenterprise/databases/accesspolicyassignments
+resource accessPolicyAssignment 'Microsoft.Cache/redisEnterprise/databases/accessPolicyAssignments@2024-09-01-preview' = {
+  parent: redisDatabase
+  name: 'apiIdentityAccess'
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'e21d8544-eee5-4c95-bbf3-fb1c4c6b7a4c')
-    principalId: principalId
-    principalType: 'ServicePrincipal'
+    accessPolicyName: 'default'
+    user: {
+      objectId: principalId
+    }
   }
 }
 

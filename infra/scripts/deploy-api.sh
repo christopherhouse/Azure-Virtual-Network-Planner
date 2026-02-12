@@ -102,7 +102,8 @@ compute_names() {
     RESOURCE_SUFFIX="${BASE_NAME}-${ENVIRONMENT}"
     CONTAINER_APP_NAME="ca-${BASE_NAME}-api-${ENVIRONMENT}"
     CAE_NAME="cae-${RESOURCE_SUFFIX}"
-    UAMI_NAME="id-${RESOURCE_SUFFIX}"
+    # API uses its own dedicated identity for accessing Cosmos DB and Redis
+    UAMI_NAME="id-api-${RESOURCE_SUFFIX}"
     APP_INSIGHTS_NAME="appi-${RESOURCE_SUFFIX}"
     COSMOS_ACCOUNT_NAME="cosmos-${RESOURCE_SUFFIX}"
     REDIS_CACHE_NAME="redis-${RESOURCE_SUFFIX}"
@@ -111,7 +112,7 @@ compute_names() {
     
     print_success "Container App:    $CONTAINER_APP_NAME"
     print_success "Environment:      $CAE_NAME"
-    print_success "Identity:         $UAMI_NAME"
+    print_success "API Identity:     $UAMI_NAME"
     print_success "App Insights:     $APP_INSIGHTS_NAME"
     print_success "Cosmos DB:        $COSMOS_ACCOUNT_NAME"
     print_success "Redis Cache:      $REDIS_CACHE_NAME"
@@ -167,16 +168,17 @@ fetch_resource_ids() {
         print_warning "Cosmos DB not found - API will not have database access"
     fi
 
-    print_step "Getting Redis Cache hostname..."
-    REDIS_HOST=$(az redis show \
-        --name "$REDIS_CACHE_NAME" \
+    print_step "Getting Azure Managed Redis hostname..."
+    # Azure Managed Redis uses 'az redisenterprise' CLI commands (not 'az redis')
+    REDIS_HOST=$(az redisenterprise show \
+        --cluster-name "$REDIS_CACHE_NAME" \
         --resource-group "$RESOURCE_GROUP" \
         --query "hostName" -o tsv 2>/dev/null || echo "")
     
     if [[ -n "$REDIS_HOST" ]]; then
         print_success "Redis host: $REDIS_HOST"
     else
-        print_warning "Redis Cache not found - API will not have caching"
+        print_warning "Azure Managed Redis not found - API will not have caching"
     fi
 }
 

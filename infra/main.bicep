@@ -56,6 +56,7 @@ var environmentName = 'cae-${resourceSuffix}'
 var logAnalyticsName = 'log-${resourceSuffix}'
 var keyVaultName = 'kv-${resourceSuffix}'
 var identityName = 'id-${resourceSuffix}'
+var apiIdentityName = 'id-api-${resourceSuffix}'
 var appInsightsName = 'appi-${resourceSuffix}'
 var vnetName = 'vnet-${resourceSuffix}'
 var nsgAcaName = 'nsg-aca-${resourceSuffix}'
@@ -176,6 +177,25 @@ resource acrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-
   }
 }
 
+// Deploy API User Assigned Managed Identity
+// Separate identity for the API container app with access to Cosmos DB and Redis
+resource apiIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: apiIdentityName
+  location: location
+  tags: allTags
+}
+
+// Grant API identity ACR pull access
+resource apiAcrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(resourceGroup().id, apiIdentityName, acrName, acrPullRoleId)
+  scope: acrResource
+  properties: {
+    principalId: apiIdentity.properties.principalId
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPullRoleId)
+    principalType: 'ServicePrincipal'
+  }
+}
+
 // Deploy Application Insights
 module appInsights 'modules/app-insights.bicep' = {
   name: 'appi-${deployment().name}'
@@ -228,7 +248,7 @@ module cosmosDb 'modules/cosmos-db.bicep' = {
     cosmosAccountName: cosmosAccountName
     privateEndpointSubnetId: vnet.outputs.peSubnetId
     privateDnsZoneId: cosmosDnsZone.outputs.id
-    principalId: userAssignedIdentity.outputs.principalId
+    principalId: apiIdentity.properties.principalId
     tags: allTags
   }
 }
@@ -242,7 +262,7 @@ module redis 'modules/managed-redis.bicep' = {
     redisSku: redisSku
     privateEndpointSubnetId: vnet.outputs.peSubnetId
     privateDnsZoneId: redisDnsZone.outputs.id
-    principalId: userAssignedIdentity.outputs.principalId
+    principalId: apiIdentity.properties.principalId
     tags: allTags
   }
 }
@@ -285,6 +305,18 @@ output userAssignedIdentityId string = userAssignedIdentity.outputs.id
 
 @description('User Assigned Identity Client ID')
 output userAssignedIdentityClientId string = userAssignedIdentity.outputs.clientId
+
+@description('API User Assigned Identity name')
+output apiIdentityName string = apiIdentity.name
+
+@description('API User Assigned Identity ID')
+output apiIdentityId string = apiIdentity.id
+
+@description('API User Assigned Identity Client ID')
+output apiIdentityClientId string = apiIdentity.properties.clientId
+
+@description('API User Assigned Identity Principal ID')
+output apiIdentityPrincipalId string = apiIdentity.properties.principalId
 
 @description('Log Analytics Workspace ID')
 output logAnalyticsWorkspaceId string = containerAppsEnv.outputs.logAnalyticsId
