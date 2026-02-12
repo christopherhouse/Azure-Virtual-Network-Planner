@@ -31,6 +31,12 @@ param logAnalyticsWorkspaceId string = ''
 @description('Tags for the resources')
 param tags object = {}
 
+@description('Custom domain hostname for web endpoint (leave empty to skip)')
+param customDomainWeb string = ''
+
+@description('Custom domain hostname for API endpoint (leave empty to skip)')
+param customDomainApi string = ''
+
 // Front Door Premium Profile
 resource frontDoorProfile 'Microsoft.Cdn/profiles@2024-02-01' = {
   name: frontDoorName
@@ -61,6 +67,32 @@ resource apiEndpoint 'Microsoft.Cdn/profiles/afdEndpoints@2024-02-01' = {
   location: 'Global'
   properties: {
     enabledState: 'Enabled'
+  }
+}
+
+// Custom Domain - Web (conditional)
+resource webCustomDomain 'Microsoft.Cdn/profiles/customDomains@2024-02-01' = if (!empty(customDomainWeb)) {
+  parent: frontDoorProfile
+  name: replace(customDomainWeb, '.', '-')
+  properties: {
+    hostName: customDomainWeb
+    tlsSettings: {
+      certificateType: 'ManagedCertificate'
+      minimumTlsVersion: 'TLS12'
+    }
+  }
+}
+
+// Custom Domain - API (conditional)
+resource apiCustomDomain 'Microsoft.Cdn/profiles/customDomains@2024-02-01' = if (!empty(customDomainApi)) {
+  parent: frontDoorProfile
+  name: replace(customDomainApi, '.', '-')
+  properties: {
+    hostName: customDomainApi
+    tlsSettings: {
+      certificateType: 'ManagedCertificate'
+      minimumTlsVersion: 'TLS12'
+    }
   }
 }
 
@@ -209,6 +241,11 @@ resource webRoute 'Microsoft.Cdn/profiles/afdEndpoints/routes@2024-02-01' = {
     originGroup: {
       id: webOriginGroup.id
     }
+    customDomains: !empty(customDomainWeb) ? [
+      {
+        id: webCustomDomain.id
+      }
+    ] : []
     supportedProtocols: [
       'Http'
       'Https'
@@ -234,6 +271,11 @@ resource apiRoute 'Microsoft.Cdn/profiles/afdEndpoints/routes@2024-02-01' = {
     originGroup: {
       id: apiOriginGroup.id
     }
+    customDomains: !empty(customDomainApi) ? [
+      {
+        id: apiCustomDomain.id
+      }
+    ] : []
     supportedProtocols: [
       'Http'
       'Https'
@@ -251,7 +293,11 @@ resource apiRoute 'Microsoft.Cdn/profiles/afdEndpoints/routes@2024-02-01' = {
   ]
 }
 
-// Security Policy - Links WAF to endpoints
+// Build custom domain references for security policy
+var webCustomDomainRef = !empty(customDomainWeb) ? [{ id: webCustomDomain.id }] : []
+var apiCustomDomainRef = !empty(customDomainApi) ? [{ id: apiCustomDomain.id }] : []
+
+// Security Policy - Links WAF to endpoints and custom domains
 resource securityPolicy 'Microsoft.Cdn/profiles/securityPolicies@2024-02-01' = {
   parent: frontDoorProfile
   name: 'waf-security-policy'
@@ -263,14 +309,14 @@ resource securityPolicy 'Microsoft.Cdn/profiles/securityPolicies@2024-02-01' = {
       }
       associations: [
         {
-          domains: [
-            {
-              id: webEndpoint.id
-            }
-            {
-              id: apiEndpoint.id
-            }
-          ]
+          domains: concat(
+            [
+              { id: webEndpoint.id }
+              { id: apiEndpoint.id }
+            ],
+            webCustomDomainRef,
+            apiCustomDomainRef
+          )
           patternsToMatch: [
             '/*'
           ]
@@ -320,3 +366,15 @@ output apiEndpointHostname string = apiEndpoint.properties.hostName
 
 @description('Front Door profile ID (for X-Azure-FDID header validation)')
 output frontDoorId string = frontDoorProfile.properties.frontDoorId
+
+@description('Web custom domain hostname (empty if not configured)')
+output webCustomDomainHostname string = !empty(customDomainWeb) ? customDomainWeb : ''
+
+@description('API custom domain hostname (empty if not configured)')
+output apiCustomDomainHostname string = !empty(customDomainApi) ? customDomainApi : ''
+
+@description('Web custom domain validation state')
+output webCustomDomainValidationState string = webCustomDomain.?properties.domainValidationState ?? 'NotConfigured'
+
+@description('API custom domain validation state')
+output apiCustomDomainValidationState string = apiCustomDomain.?properties.domainValidationState ?? 'NotConfigured'

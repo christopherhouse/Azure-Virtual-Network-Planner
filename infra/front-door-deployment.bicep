@@ -32,6 +32,12 @@ param wafPolicyId string
 @description('Resource ID of the Log Analytics workspace for diagnostics')
 param logAnalyticsWorkspaceId string = ''
 
+@description('Custom domain hostname for web endpoint (leave empty to skip)')
+param customDomainWeb string = ''
+
+@description('Custom domain hostname for API endpoint (leave empty to skip)')
+param customDomainApi string = ''
+
 @description('Tags for all resources')
 param tags object = {}
 
@@ -58,6 +64,8 @@ module frontDoor 'modules/front-door.bicep' = {
     containerAppsLocation: location
     wafPolicyId: wafPolicyId
     logAnalyticsWorkspaceId: logAnalyticsWorkspaceId
+    customDomainWeb: customDomainWeb
+    customDomainApi: customDomainApi
     tags: allTags
   }
 }
@@ -77,3 +85,15 @@ output apiEndpointHostname string = frontDoor.outputs.apiEndpointHostname
 
 @description('Front Door ID for header validation')
 output frontDoorHeaderId string = frontDoor.outputs.frontDoorId
+
+@description('Web custom domain hostname')
+output webCustomDomainHostname string = frontDoor.outputs.webCustomDomainHostname
+
+@description('API custom domain hostname')
+output apiCustomDomainHostname string = frontDoor.outputs.apiCustomDomainHostname
+
+@description('Web custom domain validation state')
+output webCustomDomainValidationState string = frontDoor.outputs.webCustomDomainValidationState
+
+@description('API custom domain validation state')
+output apiCustomDomainValidationState string = frontDoor.outputs.apiCustomDomainValidationState
