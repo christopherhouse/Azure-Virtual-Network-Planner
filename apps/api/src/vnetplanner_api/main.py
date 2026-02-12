@@ -4,7 +4,6 @@ import logging
 import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, Response
@@ -12,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
+from vnetplanner_api.cosmos import get_cosmos_service
 from vnetplanner_api.routers import projects_router
 from vnetplanner_api.telemetry import configure_telemetry
 
@@ -60,13 +60,31 @@ FastAPIInstrumentor.instrument_app(app)
 
 
 @app.get("/healthz", response_class=JSONResponse)
-async def health_check() -> dict[str, Any]:
+async def health_check() -> JSONResponse:
     """Health check endpoint for container orchestration.
 
+    Exercises dependencies and reports their status.
+    Returns 200 if service is running (even if dependencies are unhealthy).
+    Returns 503 if critical dependencies are unavailable.
+
     Returns:
-        dict: Health status with 200 OK if the service is running.
+        JSONResponse: Health status with dependency statuses as boolean values.
     """
-    return {"status": "healthy", "service": "vnetplanner-api"}
+    cosmos = get_cosmos_service()
+    database_healthy = await cosmos.check_health()
+
+    status_code = 200 if database_healthy else 503
+
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "status": "healthy" if database_healthy else "degraded",
+            "service": "vnetplanner-api",
+            "dependencies": {
+                "database": database_healthy,
+            },
+        },
+    )
 
 
 @app.head("/healthz")
@@ -74,12 +92,20 @@ async def health_check_head() -> Response:
     """HEAD health check for Azure Front Door probes.
 
     Returns minimal response with no body for efficient health probing.
+    Checks database health and returns appropriate status code.
     """
+    cosmos = get_cosmos_service()
+    database_healthy = await cosmos.check_health()
+
+    status_code = 200 if database_healthy else 503
+    health_status = "healthy" if database_healthy else "degraded"
+
     return Response(
-        status_code=200,
+        status_code=status_code,
         headers={
-            "X-Health-Status": "healthy",
+            "X-Health-Status": health_status,
             "X-Service": "vnetplanner-api",
+            "X-Database-Healthy": str(database_healthy).lower(),
         },
     )
 

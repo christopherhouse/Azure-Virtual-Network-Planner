@@ -17,6 +17,9 @@ def configure_telemetry() -> None:
     The Application Insights connection string is read from the
     APPLICATIONINSIGHTS_CONNECTION_STRING environment variable.
     If not set, telemetry is disabled with a warning.
+
+    Also configures Azure SDK distributed tracing for dependency tracking
+    (Cosmos DB, Storage, etc.).
     """
     connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
 
@@ -28,13 +31,15 @@ def configure_telemetry() -> None:
         return
 
     try:
+        from azure.core.settings import settings
+        from azure.core.tracing.ext.opentelemetry_span import OpenTelemetrySpan
         from azure.monitor.opentelemetry.exporter import AzureMonitorTraceExporter
 
         # Create resource with service info
         resource = Resource.create(
             {
                 "service.name": "vnetplanner-api",
-                "service.version": "0.1.0",
+                "service.version": "0.5.1",
             }
         )
 
@@ -48,7 +53,12 @@ def configure_telemetry() -> None:
         # Set the global tracer provider
         trace.set_tracer_provider(tracer_provider)
 
+        # Enable Azure SDK distributed tracing for dependency tracking
+        # This instruments Cosmos DB, Storage, and other Azure SDK calls
+        settings.tracing_implementation = OpenTelemetrySpan
+
         logger.info("OpenTelemetry configured with Azure Monitor exporter")
+        logger.info("Azure SDK distributed tracing enabled")
 
     except Exception as e:
         logger.error(f"Failed to configure Azure Monitor telemetry: {e}")
