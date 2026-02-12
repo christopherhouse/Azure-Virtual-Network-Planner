@@ -19,6 +19,9 @@ vi.mock('@/lib/user-id', () => ({
 const mockFetch = vi.fn() as Mock;
 global.fetch = mockFetch;
 
+// API base URL used in tests (must match api-client.ts)
+const API_BASE_URL = 'https://api.azvnetplanner.chrishou.se';
+
 describe('API Client', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -50,7 +53,7 @@ describe('API Client', () => {
       const result = await listProjects();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        '/api/2025-02-11/projects',
+        `${API_BASE_URL}/api/2025-02-11/projects`,
         expect.objectContaining({
           method: 'GET',
           headers: expect.objectContaining({
@@ -93,7 +96,7 @@ describe('API Client', () => {
       const result = await getProject('proj-1');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        '/api/2025-02-11/projects/proj-1',
+        `${API_BASE_URL}/api/2025-02-11/projects/proj-1`,
         expect.objectContaining({ method: 'GET' })
       );
       expect(result).toEqual(mockProject);
@@ -131,7 +134,7 @@ describe('API Client', () => {
       const result = await createProject('New Project', 'A new project');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        '/api/2025-02-11/projects',
+        `${API_BASE_URL}/api/2025-02-11/projects`,
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ name: 'New Project', description: 'A new project' }),
@@ -187,7 +190,7 @@ describe('API Client', () => {
       const result = await updateProject('proj-1', { name: 'Updated Name' });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        '/api/2025-02-11/projects/proj-1',
+        `${API_BASE_URL}/api/2025-02-11/projects/proj-1`,
         expect.objectContaining({
           method: 'PUT',
           body: JSON.stringify({ name: 'Updated Name' }),
@@ -208,7 +211,7 @@ describe('API Client', () => {
       await expect(deleteProject('proj-1')).resolves.toBeUndefined();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        '/api/2025-02-11/projects/proj-1',
+        `${API_BASE_URL}/api/2025-02-11/projects/proj-1`,
         expect.objectContaining({ method: 'DELETE' })
       );
     });
@@ -224,7 +227,7 @@ describe('API Client', () => {
       const result = await checkApiHealth();
       expect(result).toBe(true);
       expect(mockFetch).toHaveBeenCalledWith(
-        '/healthz',
+        `${API_BASE_URL}/healthz`,
         expect.objectContaining({ method: 'GET' })
       );
     });

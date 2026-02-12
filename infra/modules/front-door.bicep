@@ -201,6 +201,7 @@ resource staticAssetsCacheRule 'Microsoft.Cdn/profiles/ruleSets/rules@2024-02-01
 }
 
 // Web Route
+// NOTE: staticAssetsCacheRuleSet is defined but not attached - can be re-enabled later
 resource webRoute 'Microsoft.Cdn/profiles/afdEndpoints/routes@2024-02-01' = {
   parent: webEndpoint
   name: 'web-route'
@@ -208,11 +209,6 @@ resource webRoute 'Microsoft.Cdn/profiles/afdEndpoints/routes@2024-02-01' = {
     originGroup: {
       id: webOriginGroup.id
     }
-    ruleSets: [
-      {
-        id: staticAssetsCacheRuleSet.id
-      }
-    ]
     supportedProtocols: [
       'Http'
       'Https'
@@ -227,7 +223,6 @@ resource webRoute 'Microsoft.Cdn/profiles/afdEndpoints/routes@2024-02-01' = {
   }
   dependsOn: [
     webOrigin
-    staticAssetsCacheRule
   ]
 }
 
