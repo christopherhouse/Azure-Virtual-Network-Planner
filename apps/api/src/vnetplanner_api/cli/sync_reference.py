@@ -67,7 +67,7 @@ def ensure_container(client: CosmosClient, database_name: str, container_name: s
 
 def load_json_file(file_path: Path) -> dict:
     """Load and parse a JSON file."""
-    with open(file_path, "r", encoding="utf-8") as f:
+    with open(file_path, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -75,9 +75,9 @@ def upsert_document(container, document: dict) -> None:
     """Upsert a document to the container."""
     doc_id = document.get("id", "unknown")
     doc_type = document.get("type", "unknown")
-    
+
     container.upsert_item(document)
-    
+
     item_count = len(document.get("data", []))
     logger.info("Upserted: %s (type=%s, items=%d)", doc_id, doc_type, item_count)
 
@@ -103,19 +103,19 @@ def sync_reference_data(
     """
     # Find all JSON files in data directory
     json_files = list(data_dir.glob("*.json"))
-    
+
     if not json_files:
         logger.error("No JSON files found in: %s", data_dir)
         return -1
-    
+
     logger.info("Found %d JSON files to sync", len(json_files))
-    
+
     # Load and validate all files first
     documents = []
     for file_path in json_files:
         try:
             doc = load_json_file(file_path)
-            
+
             # Validate required fields
             if "id" not in doc:
                 logger.error("Missing 'id' field in: %s", file_path)
@@ -123,28 +123,28 @@ def sync_reference_data(
             if "type" not in doc:
                 logger.error("Missing 'type' field in: %s", file_path)
                 return -1
-            
+
             documents.append((file_path, doc))
             logger.info("Validated: %s (id=%s, type=%s)", file_path.name, doc["id"], doc["type"])
         except json.JSONDecodeError as e:
             logger.error("Invalid JSON in %s: %s", file_path, e)
             return -1
-    
+
     if dry_run:
         logger.info("Dry run complete - %d documents would be synced", len(documents))
         return 0
-    
+
     # Connect to Cosmos DB
     credential = get_credential()
     client = CosmosClient(endpoint, credential=credential)
-    
+
     # Ensure container exists
     ensure_container(client, database_name, container_name)
-    
+
     # Get container reference
     database = client.get_database_client(database_name)
     container = database.get_container_client(container_name)
-    
+
     # Upsert all documents
     synced_count = 0
     for file_path, doc in documents:
@@ -154,7 +154,7 @@ def sync_reference_data(
         except Exception as e:
             logger.error("Failed to upsert %s: %s", file_path, e)
             return -1
-    
+
     logger.info("Successfully synced %d documents", synced_count)
     return synced_count
 
@@ -182,66 +182,67 @@ Examples:
   sync-reference-data --dry-run
         """,
     )
-    
+
     parser.add_argument(
         "--data-dir",
         type=Path,
         default=Path(DEFAULT_DATA_DIR),
         help=f"Directory containing JSON files (default: {DEFAULT_DATA_DIR})",
     )
-    
+
     parser.add_argument(
         "--endpoint",
         type=str,
         default=os.getenv("COSMOS_ENDPOINT", ""),
         help="Cosmos DB endpoint (or set COSMOS_ENDPOINT env var)",
     )
-    
+
     parser.add_argument(
         "--database",
         type=str,
         default=os.getenv("COSMOS_DATABASE_NAME", DEFAULT_DATABASE_NAME),
         help=f"Database name (default: {DEFAULT_DATABASE_NAME})",
     )
-    
+
     parser.add_argument(
         "--container",
         type=str,
         default=os.getenv("COSMOS_REFERENCE_CONTAINER_NAME", DEFAULT_CONTAINER_NAME),
         help=f"Container name (default: {DEFAULT_CONTAINER_NAME})",
     )
-    
+
     parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Validate files without writing to Cosmos DB",
     )
-    
+
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         help="Enable verbose logging",
     )
-    
+
     args = parser.parse_args()
-    
+
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
-    
+
     # Validate data directory
     if not args.data_dir.exists():
         logger.error("Data directory does not exist: %s", args.data_dir)
         return 1
-    
+
     if not args.data_dir.is_dir():
         logger.error("Not a directory: %s", args.data_dir)
         return 1
-    
+
     # Validate endpoint (unless dry run)
     if not args.dry_run and not args.endpoint:
         logger.error("COSMOS_ENDPOINT environment variable or --endpoint required")
         return 1
-    
+
     # Run sync
     result = sync_reference_data(
         endpoint=args.endpoint,
@@ -250,7 +251,7 @@ Examples:
         container_name=args.container,
         dry_run=args.dry_run,
     )
-    
+
     return 0 if result >= 0 else 1
 
 

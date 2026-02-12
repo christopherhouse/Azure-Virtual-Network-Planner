@@ -120,9 +120,7 @@ class RedisService:
             logger.warning("Redis error on get(%s): %s", key, e)
             return None
 
-    async def set(
-        self, key: str, value: str, ttl: int | None = None
-    ) -> bool:
+    async def set(self, key: str, value: str, ttl: int | None = None) -> bool:
         """Set a value in cache with TTL.
 
         Args:

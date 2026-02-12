@@ -33,19 +33,14 @@ def mock_delegations_data() -> dict:
         "id": "delegations",
         "type": "delegations",
         "data": [
-            {
-                "id": "none",
-                "name": "None",
-                "serviceName": "",
-                "description": "No delegation"
-            },
+            {"id": "none", "name": "None", "serviceName": "", "description": "No delegation"},
             {
                 "id": "appservice",
                 "name": "App Service",
                 "serviceName": "Microsoft.Web/serverFarms",
-                "description": "Azure App Service"
-            }
-        ]
+                "description": "Azure App Service",
+            },
+        ],
     }
 
 
@@ -60,9 +55,9 @@ def mock_service_endpoints_data() -> dict:
                 "id": "storage",
                 "name": "Azure Storage",
                 "service": "Microsoft.Storage",
-                "description": "Azure Storage service endpoint"
+                "description": "Azure Storage service endpoint",
             }
-        ]
+        ],
     }
 
 
@@ -78,15 +73,15 @@ def mock_regions_data() -> dict:
                 "name": "East US",
                 "value": "eastus",
                 "geography": "United States",
-                "hasAvailabilityZones": True
+                "hasAvailabilityZones": True,
             },
             {
                 "name": "West US",
                 "value": "westus",
                 "geography": "United States",
-                "hasAvailabilityZones": False
-            }
-        ]
+                "hasAvailabilityZones": False,
+            },
+        ],
     }
 
 
@@ -98,7 +93,7 @@ class TestDelegationsEndpoint:
     ) -> None:
         """Test that /reference/delegations returns 200 OK."""
         mock_reference_service.get_delegations = AsyncMock(return_value=mock_delegations_data)
-        
+
         response = client.get("/api/2025-02-11/reference/delegations")
         assert response.status_code == 200
 
@@ -107,10 +102,10 @@ class TestDelegationsEndpoint:
     ) -> None:
         """Test that /reference/delegations returns delegation options."""
         mock_reference_service.get_delegations = AsyncMock(return_value=mock_delegations_data)
-        
+
         response = client.get("/api/2025-02-11/reference/delegations")
         data = response.json()
-        
+
         assert "delegations" in data
         assert len(data["delegations"]) == 2
         assert data["delegations"][0]["id"] == "none"
@@ -120,7 +115,7 @@ class TestDelegationsEndpoint:
     ) -> None:
         """Test that /reference/delegations returns 404 when data not found."""
         mock_reference_service.get_delegations = AsyncMock(return_value=None)
-        
+
         response = client.get("/api/2025-02-11/reference/delegations")
         assert response.status_code == 404
 
@@ -129,23 +124,33 @@ class TestServiceEndpointsEndpoint:
     """Tests for GET /api/2025-02-11/reference/service-endpoints endpoint."""
 
     def test_get_service_endpoints_returns_200(
-        self, client: TestClient, mock_reference_service: MagicMock, mock_service_endpoints_data: dict
+        self,
+        client: TestClient,
+        mock_reference_service: MagicMock,
+        mock_service_endpoints_data: dict,
     ) -> None:
         """Test that /reference/service-endpoints returns 200 OK."""
-        mock_reference_service.get_service_endpoints = AsyncMock(return_value=mock_service_endpoints_data)
-        
+        mock_reference_service.get_service_endpoints = AsyncMock(
+            return_value=mock_service_endpoints_data
+        )
+
         response = client.get("/api/2025-02-11/reference/service-endpoints")
         assert response.status_code == 200
 
     def test_get_service_endpoints_returns_data(
-        self, client: TestClient, mock_reference_service: MagicMock, mock_service_endpoints_data: dict
+        self,
+        client: TestClient,
+        mock_reference_service: MagicMock,
+        mock_service_endpoints_data: dict,
     ) -> None:
         """Test that /reference/service-endpoints returns endpoint options."""
-        mock_reference_service.get_service_endpoints = AsyncMock(return_value=mock_service_endpoints_data)
-        
+        mock_reference_service.get_service_endpoints = AsyncMock(
+            return_value=mock_service_endpoints_data
+        )
+
         response = client.get("/api/2025-02-11/reference/service-endpoints")
         data = response.json()
-        
+
         assert "serviceEndpoints" in data
         assert len(data["serviceEndpoints"]) == 1
         assert data["serviceEndpoints"][0]["service"] == "Microsoft.Storage"
@@ -159,7 +164,7 @@ class TestRegionsEndpoint:
     ) -> None:
         """Test that /reference/regions returns 200 OK."""
         mock_reference_service.get_regions = AsyncMock(return_value=mock_regions_data)
-        
+
         response = client.get("/api/2025-02-11/reference/regions")
         assert response.status_code == 200
 
@@ -168,10 +173,10 @@ class TestRegionsEndpoint:
     ) -> None:
         """Test that /reference/regions returns region list with default."""
         mock_reference_service.get_regions = AsyncMock(return_value=mock_regions_data)
-        
+
         response = client.get("/api/2025-02-11/reference/regions")
         data = response.json()
-        
+
         assert "regions" in data
         assert "defaultRegion" in data
         assert data["defaultRegion"] == "eastus"
@@ -182,12 +187,12 @@ class TestRegionsEndpoint:
     ) -> None:
         """Test that regions include availability zone info."""
         mock_reference_service.get_regions = AsyncMock(return_value=mock_regions_data)
-        
+
         response = client.get("/api/2025-02-11/reference/regions")
         data = response.json()
-        
+
         eastus = next(r for r in data["regions"] if r["value"] == "eastus")
         assert eastus["hasAvailabilityZones"] is True
-        
+
         westus = next(r for r in data["regions"] if r["value"] == "westus")
         assert westus["hasAvailabilityZones"] is False
