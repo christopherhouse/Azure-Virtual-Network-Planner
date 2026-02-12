@@ -122,11 +122,11 @@ class ReferenceDataService:
         # Check cache first
         cached_data = await self._get_from_cache(cache_key)
         if cached_data:
-            logger.debug("Cache hit for %s", doc_type)
+            logger.info("Cache hit for reference data: %s", doc_type)
             return cached_data
 
         # Cache miss - fetch from Cosmos DB
-        logger.debug("Cache miss for %s, fetching from Cosmos DB", doc_type)
+        logger.info("Cache miss for reference data: %s", doc_type)
 
         if not self.is_configured():
             logger.warning("Cosmos DB not configured, cannot fetch %s", doc_type)
