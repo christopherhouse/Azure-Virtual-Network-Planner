@@ -10,13 +10,64 @@ const USER_ID_COOKIE_MAX_AGE = 60 * 60 * 24 * 365 * 2; // 2 years in seconds
  */
 function generateUUID(): string {
   // Use crypto.randomUUID if available (modern browsers)
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
 
-  // Fallback for older browsers
+  // Fallback for environments without crypto.randomUUID but with getRandomValues
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+
+    // Per RFC 4122 section 4.4, set the version to 4 and variant to 10x
+    bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+    bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 10xxxxxx
+
+    const byteToHex: string[] = [];
+    for (let i = 0; i < 256; i++) {
+      byteToHex.push((i + 0x100).toString(16).substring(1));
+    }
+
+    return (
+      byteToHex[bytes[0]] +
+      byteToHex[bytes[1]] +
+      byteToHex[bytes[2]] +
+      byteToHex[bytes[3]] +
+      '-' +
+      byteToHex[bytes[4]] +
+      byteToHex[bytes[5]] +
+      '-' +
+      byteToHex[bytes[6]] +
+      byteToHex[bytes[7]] +
+      '-' +
+      byteToHex[bytes[8]] +
+      byteToHex[bytes[9]] +
+      '-' +
+      byteToHex[bytes[10]] +
+      byteToHex[bytes[11]] +
+      byteToHex[bytes[12]] +
+      byteToHex[bytes[13]] +
+      byteToHex[bytes[14]] +
+      byteToHex[bytes[15]]
+    );
+  }
+
+  // As a last resort (very old environments without crypto), generate a UUID-like
+  // identifier using Date and a counter. This avoids Math.random() but is not
+  // cryptographically secure. Such environments are uncommon for this app.
+  let d = Date.now();
+  let d2 =
+    (typeof performance !== 'undefined' &&
+      typeof performance.now === 'function' &&
+      performance.now() * 1000) ||
+    0;
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = (Math.random() * 16) | 0;
+    let r = d > 0 ? (d + c.charCodeAt(0)) % 16 : (d2 + c.charCodeAt(0)) % 16;
+    if (d > 0) {
+      d = Math.floor(d / 16);
+    } else {
+      d2 = Math.floor(d2 / 16);
+    }
     const v = c === 'x' ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
