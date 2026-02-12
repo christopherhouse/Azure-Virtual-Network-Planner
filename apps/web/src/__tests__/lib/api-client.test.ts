@@ -283,7 +283,12 @@ describe('API Client', () => {
     });
 
     it('should identify project limit exceeded errors', () => {
-      const limitError = new ApiError('Test error', 403, 'Limit exceeded', 'PROJECT_LIMIT_EXCEEDED');
+      const limitError = new ApiError(
+        'Test error',
+        403,
+        'Limit exceeded',
+        'PROJECT_LIMIT_EXCEEDED'
+      );
       const otherError = new ApiError('Test error', 403, 'Forbidden');
       const notFoundError = new ApiError('Test error', 404, 'Not found');
 
@@ -299,14 +304,15 @@ describe('API Client', () => {
         ok: false,
         status: 403,
         statusText: 'Forbidden',
-        json: () => Promise.resolve({
-          detail: {
-            message: 'Project limit exceeded. Maximum 5 projects allowed per user.',
-            code: 'PROJECT_LIMIT_EXCEEDED',
-            limit: 5,
-            current: 5,
-          },
-        }),
+        json: () =>
+          Promise.resolve({
+            detail: {
+              message: 'Project limit exceeded. Maximum 5 projects allowed per user.',
+              code: 'PROJECT_LIMIT_EXCEEDED',
+              limit: 5,
+              current: 5,
+            },
+          }),
       });
 
       try {

@@ -22,17 +22,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Plus, FolderOpen, MoreVertical, Trash2, Edit, Network } from 'lucide-react';
 import { MAX_PROJECTS_PER_USER } from '@/context/app-context';
 
 export function ProjectList() {
-  const { state, createNewProject, removeProject, setActiveProject, updateProjectDetails, canCreateProject } =
-    useApp();
+  const {
+    state,
+    createNewProject,
+    removeProject,
+    setActiveProject,
+    updateProjectDetails,
+    canCreateProject,
+  } = useApp();
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [editProjectId, setEditProjectId] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -100,7 +102,9 @@ export function ProjectList() {
               </TooltipTrigger>
               <TooltipContent>
                 <p>Maximum of {MAX_PROJECTS_PER_USER} projects reached.</p>
-                <p className="text-muted-foreground text-xs">Delete a project to create a new one.</p>
+                <p className="text-muted-foreground text-xs">
+                  Delete a project to create a new one.
+                </p>
               </TooltipContent>
             </Tooltip>
           )}
