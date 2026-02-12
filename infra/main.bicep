@@ -37,16 +37,17 @@ param internalOnly bool = true
 @description('Tags for all resources')
 param tags object = {}
 
-@description('Redis cache SKU (Standard minimum for private endpoints)')
+@description('Azure Managed Redis SKU')
 @allowed([
-  'Basic'
-  'Standard'
-  'Premium'
+  'Balanced_B0'
+  'Balanced_B1'
+  'Balanced_B3'
+  'Balanced_B5'
+  'Balanced_B10'
+  'MemoryOptimized_M10'
+  'ComputeOptimized_X3'
 ])
-param redisSku string = 'Standard'
-
-@description('Redis cache capacity (size)')
-param redisCapacity int = 0
+param redisSku string = 'Balanced_B0'
 
 // Computed names based on environment
 var resourceSuffix = '${baseName}-${environment}'
@@ -208,11 +209,11 @@ module cosmosDnsZone 'modules/private-dns-zone.bicep' = {
   }
 }
 
-// Deploy Private DNS Zone for Redis
+// Deploy Private DNS Zone for Azure Managed Redis
 module redisDnsZone 'modules/private-dns-zone.bicep' = {
   name: 'redisdns-${deployment().name}'
   params: {
-    zoneName: 'privatelink.redis.cache.windows.net'
+    zoneName: 'privatelink.redis.azure.net'
     vnetId: vnet.outputs.id
     vnetName: vnet.outputs.name
     tags: allTags
@@ -232,18 +233,16 @@ module cosmosDb 'modules/cosmos-db.bicep' = {
   }
 }
 
-// Deploy Azure Cache for Redis with Private Endpoint and Microsoft Entra ID auth
-module redis 'modules/redis.bicep' = {
+// Deploy Azure Managed Redis with Private Endpoint
+module redis 'modules/managed-redis.bicep' = {
   name: 'redis-${deployment().name}'
   params: {
     location: location
     redisName: redisName
     redisSku: redisSku
-    redisCapacity: redisCapacity
     privateEndpointSubnetId: vnet.outputs.peSubnetId
     privateDnsZoneId: redisDnsZone.outputs.id
     principalId: userAssignedIdentity.outputs.principalId
-    principalName: userAssignedIdentity.outputs.name
     tags: allTags
   }
 }
@@ -341,5 +340,5 @@ output redisName string = redis.outputs.name
 @description('Redis cache hostname')
 output redisHostName string = redis.outputs.hostName
 
-@description('Redis cache SSL port')
-output redisSslPort int = redis.outputs.sslPort
+@description('Redis cache port')
+output redisPort int = redis.outputs.port

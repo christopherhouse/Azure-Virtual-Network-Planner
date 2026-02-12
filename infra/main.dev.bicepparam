@@ -13,8 +13,7 @@ param enableVnetIntegration = true
 param internalOnly = true
 
 // Redis configuration
-param redisSku = 'Standard'
-param redisCapacity = 0 // C0 - smallest size, 250MB
+param redisSku = 'Balanced_B0' // Smallest Azure Managed Redis SKU (0.5GB)
 
 param tags = {
   costCenter: 'development'
