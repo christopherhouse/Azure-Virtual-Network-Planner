@@ -59,6 +59,16 @@ class TestHealthCheckGet:
         assert data["service"] == "vnetplanner-api"
         assert data["dependencies"]["database"] is True
 
+    @pytest.mark.usefixtures("mock_cosmos_healthy")
+    def test_health_check_includes_metrics(self, client: TestClient) -> None:
+        """Test that /healthz includes response time metrics."""
+        response = client.get("/healthz")
+        data = response.json()
+        assert "metrics" in data
+        assert "databaseResponseTimeMs" in data["metrics"]
+        assert isinstance(data["metrics"]["databaseResponseTimeMs"], (int, float))
+        assert data["metrics"]["databaseResponseTimeMs"] >= 0
+
     @pytest.mark.usefixtures("mock_cosmos_unhealthy")
     def test_health_check_returns_degraded_status_when_db_unhealthy(
         self, client: TestClient

@@ -2,6 +2,7 @@
 
 import logging
 import os
+import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -71,7 +72,10 @@ async def health_check() -> JSONResponse:
         JSONResponse: Health status with dependency statuses as boolean values.
     """
     cosmos = get_cosmos_service()
+
+    start_time = time.perf_counter()
     database_healthy = await cosmos.check_health()
+    database_response_time_ms = round((time.perf_counter() - start_time) * 1000, 2)
 
     status_code = 200 if database_healthy else 503
 
@@ -82,6 +86,9 @@ async def health_check() -> JSONResponse:
             "service": "vnetplanner-api",
             "dependencies": {
                 "database": database_healthy,
+            },
+            "metrics": {
+                "databaseResponseTimeMs": database_response_time_ms,
             },
         },
     )
