@@ -6,22 +6,12 @@ import { getUserId } from './user-id';
 
 const API_VERSION = '2025-02-11';
 
-// API base URL - uses environment variable in production, relative path in development
+// API base URL - hardcoded to the API Front Door endpoint
+// TODO: Move to environment variable or Bicep-managed configuration
+const API_BASE_URL = 'https://api.azvnetplanner.chrishou.se';
+
 const getApiBaseUrl = (): string => {
-  if (typeof window === 'undefined') {
-    return '';
-  }
-
-  // Check for environment variable (Next.js public env var)
-  const envUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (envUrl) {
-    return envUrl;
-  }
-
-  // In development, use relative path (proxied by Next.js)
-  // In production with same-origin, use relative path
-  // If API is on different domain, set NEXT_PUBLIC_API_URL
-  return '';
+  return API_BASE_URL;
 };
 
 /**
