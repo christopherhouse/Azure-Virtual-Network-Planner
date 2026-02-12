@@ -194,9 +194,8 @@ async def create_project(
 @router.put(
     "/{project_id}",
     response_model=Project,
-    summary="Update a project",
-    description="Updates an existing project. Supports partial updates.",
-    responses={404: {"model": ErrorResponse, "description": "Project not found"}},
+    summary="Create or update a project",
+    description="Creates a new project or updates an existing one (upsert). Supports partial updates for existing projects.",
 )
 async def update_project(
     project_id: str,
@@ -204,7 +203,7 @@ async def update_project(
     user_id: Annotated[str, Depends(get_user_id)],
     cosmos: Annotated[CosmosDBService, Depends(get_cosmos_service)],
 ) -> Project:
-    """Update an existing project."""
+    """Create or update a project (upsert semantics)."""
     if not cosmos.is_configured():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -214,13 +213,26 @@ async def update_project(
     try:
         # Get existing project
         document = await cosmos.get_project(user_id, project_id)
+        now = now_iso()
 
         if document is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Project {project_id} not found",
+            # Project doesn't exist - create it with the client-provided ID
+            project = Project(
+                id=project_id,
+                name=project_update.name or "Untitled Project",
+                description=project_update.description or "",
+                vnets=[v.model_dump(by_alias=True) for v in project_update.vnets]
+                if project_update.vnets
+                else [],
+                created_at=now,
+                updated_at=now,
             )
 
+            await cosmos.create_project(user_id, project.model_dump(by_alias=True))
+            logger.info("Created project %s for user %s via PUT", project_id, user_id[:8])
+            return project
+
+        # Project exists - update it
         existing_project = document.get("project", {})
 
         # Apply updates
@@ -231,7 +243,7 @@ async def update_project(
         if project_update.vnets is not None:
             existing_project["vnets"] = [v.model_dump(by_alias=True) for v in project_update.vnets]
 
-        existing_project["updatedAt"] = now_iso()
+        existing_project["updatedAt"] = now
 
         # Save
         await cosmos.update_project(user_id, project_id, existing_project)
@@ -242,10 +254,10 @@ async def update_project(
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("Error updating project %s: %s", project_id, e)
+        logger.exception("Error upserting project %s: %s", project_id, e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update project: {str(e)}",
+            detail=f"Failed to save project: {str(e)}",
         ) from e
 
 

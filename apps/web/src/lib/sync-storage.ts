@@ -146,26 +146,13 @@ export async function saveAppState(state: AppState): Promise<void> {
     notifyListeners();
 
     // Sync each project to the API
-    // This is a simplified approach - for production, you'd want
-    // change tracking to only sync modified items
+    // PUT now supports upsert semantics - creates if not exists
     for (const project of state.projects) {
-      try {
-        // Try to update, if 404 then create
-        await api.updateProject(project.id, {
-          name: project.name,
-          description: project.description,
-          vnets: project.vnets,
-        });
-      } catch (error) {
-        if (error instanceof api.ApiError && error.status === 404) {
-          // Project doesn't exist, create it
-          const newProject = await api.createProject(project.name, project.description);
-          // Update with vnets
-          await api.updateProject(newProject.id, { vnets: project.vnets });
-        } else {
-          throw error;
-        }
-      }
+      await api.updateProject(project.id, {
+        name: project.name,
+        description: project.description,
+        vnets: project.vnets,
+      });
     }
 
     syncState = { ...syncState, status: 'synced', lastSync: new Date(), error: null };

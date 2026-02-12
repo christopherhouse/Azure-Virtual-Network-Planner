@@ -237,24 +237,30 @@ class TestCreateProject:
 
 
 class TestUpdateProject:
-    """Tests for PUT /api/2025-02-11/projects/{project_id}."""
+    """Tests for PUT /api/2025-02-11/projects/{project_id} (upsert)."""
 
-    def test_update_project_not_found(
+    def test_update_project_creates_when_not_found(
         self, client: TestClient, valid_user_id: str, override_cosmos: Callable[[MagicMock], None]
     ) -> None:
-        """Test 404 when project doesn't exist."""
+        """Test PUT creates project when it doesn't exist (upsert behavior)."""
         mock_service = MagicMock()
         mock_service.is_configured.return_value = True
         mock_service.get_project = AsyncMock(return_value=None)
+        mock_service.create_project = AsyncMock(return_value={})
         override_cosmos(mock_service)
 
         response = client.put(
-            "/api/2025-02-11/projects/nonexistent",
+            "/api/2025-02-11/projects/new-project-id",
             headers={"X-User-ID": valid_user_id},
-            json={"name": "Updated Name"},
+            json={"name": "New Project", "description": "Created via PUT"},
         )
 
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["id"] == "new-project-id"
+        assert data["name"] == "New Project"
+        assert data["description"] == "Created via PUT"
+        mock_service.create_project.assert_called_once()
 
     def test_update_project_success(
         self, client: TestClient, valid_user_id: str, override_cosmos: Callable[[MagicMock], None]
