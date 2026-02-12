@@ -183,6 +183,10 @@ export async function createProjectSync(name: string, description: string = ''):
     const project = await api.createProject(name, description);
     return project;
   } catch (error) {
+    // Check for project limit exceeded - re-throw with clear message
+    if (error instanceof api.ApiError && error.isProjectLimitExceeded()) {
+      throw new Error('Project limit reached (5 max). Delete a project to create a new one.');
+    }
     console.error('Failed to create project via API:', error);
     // Fallback to local creation
     const { createProject } = await import('./storage');

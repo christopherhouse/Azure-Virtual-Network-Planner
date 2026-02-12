@@ -21,6 +21,9 @@ from vnetplanner_api.models import (
     now_iso,
 )
 
+# Business rule: Maximum projects per user
+MAX_PROJECTS_PER_USER = 5
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
@@ -166,6 +169,19 @@ async def create_project(
         )
 
     try:
+        # Check project limit
+        current_count = await cosmos.count_projects(user_id)
+        if current_count >= MAX_PROJECTS_PER_USER:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "message": f"Project limit exceeded. Maximum {MAX_PROJECTS_PER_USER} projects allowed per user.",
+                    "code": "PROJECT_LIMIT_EXCEEDED",
+                    "limit": MAX_PROJECTS_PER_USER,
+                    "current": current_count,
+                },
+            )
+
         now = now_iso()
         project_id = str(uuid.uuid4())
 
@@ -183,6 +199,8 @@ async def create_project(
         logger.info("Created project %s for user %s", project_id, user_id[:8])
         return project
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception("Error creating project: %s", e)
         raise HTTPException(
@@ -216,7 +234,20 @@ async def update_project(
         now = now_iso()
 
         if document is None:
-            # Project doesn't exist - create it with the client-provided ID
+            # Project doesn't exist - check limit before creating
+            current_count = await cosmos.count_projects(user_id)
+            if current_count >= MAX_PROJECTS_PER_USER:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail={
+                        "message": f"Project limit exceeded. Maximum {MAX_PROJECTS_PER_USER} projects allowed per user.",
+                        "code": "PROJECT_LIMIT_EXCEEDED",
+                        "limit": MAX_PROJECTS_PER_USER,
+                        "current": current_count,
+                    },
+                )
+
+            # Create new project with the client-provided ID
             project = Project(
                 id=project_id,
                 name=project_update.name or "Untitled Project",

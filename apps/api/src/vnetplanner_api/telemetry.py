@@ -39,7 +39,7 @@ def configure_telemetry() -> None:
         resource = Resource.create(
             {
                 "service.name": "vnetplanner-api",
-                "service.version": "0.5.1",
+                "service.version": "0.5.2",
             }
         )
 

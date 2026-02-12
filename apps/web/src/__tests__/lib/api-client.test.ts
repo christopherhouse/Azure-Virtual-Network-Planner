@@ -275,5 +275,56 @@ describe('API Client', () => {
       expect(error.detail).toBe('Bad request');
       expect(error.name).toBe('ApiError');
     });
+
+    it('should have code property when provided', () => {
+      const error = new ApiError('Test error', 403, 'Limit exceeded', 'PROJECT_LIMIT_EXCEEDED');
+
+      expect(error.code).toBe('PROJECT_LIMIT_EXCEEDED');
+    });
+
+    it('should identify project limit exceeded errors', () => {
+      const limitError = new ApiError(
+        'Test error',
+        403,
+        'Limit exceeded',
+        'PROJECT_LIMIT_EXCEEDED'
+      );
+      const otherError = new ApiError('Test error', 403, 'Forbidden');
+      const notFoundError = new ApiError('Test error', 404, 'Not found');
+
+      expect(limitError.isProjectLimitExceeded()).toBe(true);
+      expect(otherError.isProjectLimitExceeded()).toBe(false);
+      expect(notFoundError.isProjectLimitExceeded()).toBe(false);
+    });
+  });
+
+  describe('createProject with project limit error', () => {
+    it('should throw ApiError with PROJECT_LIMIT_EXCEEDED code on 403', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        statusText: 'Forbidden',
+        json: () =>
+          Promise.resolve({
+            detail: {
+              message: 'Project limit exceeded. Maximum 5 projects allowed per user.',
+              code: 'PROJECT_LIMIT_EXCEEDED',
+              limit: 5,
+              current: 5,
+            },
+          }),
+      });
+
+      try {
+        await createProject('New Project');
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect(error).toBeInstanceOf(ApiError);
+        const apiError = error as ApiError;
+        expect(apiError.status).toBe(403);
+        expect(apiError.code).toBe('PROJECT_LIMIT_EXCEEDED');
+        expect(apiError.isProjectLimitExceeded()).toBe(true);
+      }
+    });
   });
 });

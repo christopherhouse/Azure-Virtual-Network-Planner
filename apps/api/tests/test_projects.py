@@ -28,6 +28,7 @@ def mock_cosmos_service() -> MagicMock:
     mock.create_project = AsyncMock()
     mock.update_project = AsyncMock()
     mock.delete_project = AsyncMock(return_value=True)
+    mock.count_projects = AsyncMock(return_value=0)
     return mock
 
 
@@ -186,6 +187,7 @@ class TestCreateProject:
         """Test successful project creation."""
         mock_service = MagicMock()
         mock_service.is_configured.return_value = True
+        mock_service.count_projects = AsyncMock(return_value=0)
         mock_service.create_project = AsyncMock(return_value={})
         override_cosmos(mock_service)
 
@@ -246,6 +248,7 @@ class TestUpdateProject:
         mock_service = MagicMock()
         mock_service.is_configured.return_value = True
         mock_service.get_project = AsyncMock(return_value=None)
+        mock_service.count_projects = AsyncMock(return_value=0)  # Under limit
         mock_service.create_project = AsyncMock(return_value={})
         override_cosmos(mock_service)
 
@@ -332,3 +335,180 @@ class TestDeleteProject:
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
+
+
+class TestProjectLimit:
+    """Tests for project limit enforcement (max 5 projects per user)."""
+
+    def test_create_project_at_limit_returns_403(
+        self, client: TestClient, valid_user_id: str, override_cosmos: Callable[[MagicMock], None]
+    ) -> None:
+        """Test that creating a project when at limit returns 403."""
+        mock_service = MagicMock()
+        mock_service.is_configured.return_value = True
+        mock_service.count_projects = AsyncMock(return_value=5)  # At limit
+        override_cosmos(mock_service)
+
+        response = client.post(
+            "/api/2025-02-11/projects",
+            headers={"X-User-ID": valid_user_id},
+            json={"name": "New Project", "description": "Should fail"},
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        data = response.json()
+        assert data["detail"]["code"] == "PROJECT_LIMIT_EXCEEDED"
+        assert data["detail"]["limit"] == 5
+        assert data["detail"]["current"] == 5
+        # Verify create_project was NOT called
+        mock_service.create_project.assert_not_called()
+
+    def test_create_project_over_limit_returns_403(
+        self, client: TestClient, valid_user_id: str, override_cosmos: Callable[[MagicMock], None]
+    ) -> None:
+        """Test that creating a project when over limit returns 403."""
+        mock_service = MagicMock()
+        mock_service.is_configured.return_value = True
+        mock_service.count_projects = AsyncMock(return_value=7)  # Over limit
+        override_cosmos(mock_service)
+
+        response = client.post(
+            "/api/2025-02-11/projects",
+            headers={"X-User-ID": valid_user_id},
+            json={"name": "New Project"},
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        data = response.json()
+        assert data["detail"]["code"] == "PROJECT_LIMIT_EXCEEDED"
+
+    def test_create_project_under_limit_succeeds(
+        self, client: TestClient, valid_user_id: str, override_cosmos: Callable[[MagicMock], None]
+    ) -> None:
+        """Test that creating a project when under limit succeeds."""
+        mock_service = MagicMock()
+        mock_service.is_configured.return_value = True
+        mock_service.count_projects = AsyncMock(return_value=4)  # Under limit
+        mock_service.create_project = AsyncMock(return_value={})
+        override_cosmos(mock_service)
+
+        response = client.post(
+            "/api/2025-02-11/projects",
+            headers={"X-User-ID": valid_user_id},
+            json={"name": "New Project"},
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        mock_service.create_project.assert_called_once()
+
+    def test_put_create_at_limit_returns_403(
+        self, client: TestClient, valid_user_id: str, override_cosmos: Callable[[MagicMock], None]
+    ) -> None:
+        """Test that PUT creating a new project at limit returns 403."""
+        mock_service = MagicMock()
+        mock_service.is_configured.return_value = True
+        mock_service.get_project = AsyncMock(return_value=None)  # Project doesn't exist
+        mock_service.count_projects = AsyncMock(return_value=5)  # At limit
+        override_cosmos(mock_service)
+
+        response = client.put(
+            "/api/2025-02-11/projects/new-project-id",
+            headers={"X-User-ID": valid_user_id},
+            json={"name": "New Project via PUT"},
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        data = response.json()
+        assert data["detail"]["code"] == "PROJECT_LIMIT_EXCEEDED"
+        mock_service.create_project.assert_not_called()
+
+    def test_put_update_existing_at_limit_succeeds(
+        self, client: TestClient, valid_user_id: str, override_cosmos: Callable[[MagicMock], None]
+    ) -> None:
+        """Test that PUT updating an existing project at limit succeeds."""
+        mock_doc = {
+            "id": "existing-proj",
+            "userId": valid_user_id,
+            "project": {
+                "id": "existing-proj",
+                "name": "Existing Project",
+                "description": "Original description",
+                "vnets": [],
+                "createdAt": "2025-01-01T00:00:00Z",
+                "updatedAt": "2025-01-01T00:00:00Z",
+            },
+        }
+
+        mock_service = MagicMock()
+        mock_service.is_configured.return_value = True
+        mock_service.get_project = AsyncMock(return_value=mock_doc)  # Project exists
+        mock_service.update_project = AsyncMock(return_value={})
+        # Note: count_projects should NOT be called for updates
+        override_cosmos(mock_service)
+
+        response = client.put(
+            "/api/2025-02-11/projects/existing-proj",
+            headers={"X-User-ID": valid_user_id},
+            json={"name": "Updated Name"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        # Update should work - we're not creating a new project
+        mock_service.update_project.assert_called_once()
+        # count_projects should not be called for updates
+        mock_service.count_projects.assert_not_called()
+
+    def test_create_project_limit_boundary(
+        self, client: TestClient, valid_user_id: str, override_cosmos: Callable[[MagicMock], None]
+    ) -> None:
+        """Test boundary: 4 projects allows creation, 5 does not."""
+        mock_service = MagicMock()
+        mock_service.is_configured.return_value = True
+        mock_service.create_project = AsyncMock(return_value={})
+
+        # Test at 4 projects (should succeed)
+        mock_service.count_projects = AsyncMock(return_value=4)
+        override_cosmos(mock_service)
+
+        response = client.post(
+            "/api/2025-02-11/projects",
+            headers={"X-User-ID": valid_user_id},
+            json={"name": "Fifth Project"},
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+
+        # Reset and test at 5 projects (should fail)
+        mock_service.count_projects = AsyncMock(return_value=5)
+        mock_service.create_project.reset_mock()
+        override_cosmos(mock_service)
+
+        response = client.post(
+            "/api/2025-02-11/projects",
+            headers={"X-User-ID": valid_user_id},
+            json={"name": "Sixth Project"},
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_project_limit_error_message_is_user_friendly(
+        self, client: TestClient, valid_user_id: str, override_cosmos: Callable[[MagicMock], None]
+    ) -> None:
+        """Test that the error message is clear and actionable."""
+        mock_service = MagicMock()
+        mock_service.is_configured.return_value = True
+        mock_service.count_projects = AsyncMock(return_value=5)
+        override_cosmos(mock_service)
+
+        response = client.post(
+            "/api/2025-02-11/projects",
+            headers={"X-User-ID": valid_user_id},
+            json={"name": "New Project"},
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        data = response.json()
+        # Verify error contains actionable information
+        assert (
+            "limit" in data["detail"]["message"].lower()
+            or "maximum" in data["detail"]["message"].lower()
+        )
+        assert "5" in data["detail"]["message"]

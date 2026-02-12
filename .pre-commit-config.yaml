@@ -1,0 +1,24 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+      - id: check-merge-conflict
+
+  # Version sync check (local hook)
+  - repo: local
+    hooks:
+      - id: version-sync
+        name: Check version sync
+        entry: pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/sync-version.ps1 -Check
+        language: system
+        pass_filenames: false
+        always_run: true
+        files: ^(VERSION|apps/web/package\.json|apps/api/pyproject\.toml)$

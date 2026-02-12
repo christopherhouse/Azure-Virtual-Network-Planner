@@ -21,10 +21,18 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public readonly status: number,
-    public readonly detail?: string
+    public readonly detail?: string,
+    public readonly code?: string
   ) {
     super(message);
     this.name = 'ApiError';
+  }
+
+  /**
+   * Check if this is a project limit exceeded error
+   */
+  isProjectLimitExceeded(): boolean {
+    return this.status === 403 && this.code === 'PROJECT_LIMIT_EXCEEDED';
   }
 }
 
@@ -54,9 +62,16 @@ async function apiRequest<T>(method: string, path: string, body?: unknown): Prom
 
   if (!response.ok) {
     let detail: string | undefined;
+    let code: string | undefined;
     try {
       const errorData = await response.json();
-      detail = errorData.detail || errorData.error;
+      // Handle structured error response from backend
+      if (typeof errorData.detail === 'object' && errorData.detail !== null) {
+        detail = errorData.detail.message || JSON.stringify(errorData.detail);
+        code = errorData.detail.code;
+      } else {
+        detail = errorData.detail || errorData.error;
+      }
     } catch {
       // Ignore JSON parse errors
     }
@@ -64,7 +79,8 @@ async function apiRequest<T>(method: string, path: string, body?: unknown): Prom
     throw new ApiError(
       `API request failed: ${response.status} ${response.statusText}`,
       response.status,
-      detail
+      detail,
+      code
     );
   }
 

@@ -33,11 +33,18 @@ import {
 } from '@/lib/sync-storage';
 import { splitCIDR, mergeCIDR, canMergeCIDR } from '@/lib/cidr';
 
+// Business rule: Maximum projects per user (must match backend)
+export const MAX_PROJECTS_PER_USER = 5;
+
 interface AppContextType {
   state: AppState;
   activeProject: Project | undefined;
   syncStatus: SyncStatus;
   isOnline: boolean;
+
+  // Project limits
+  projectCount: number;
+  canCreateProject: boolean;
 
   // Project operations
   createNewProject: (name: string, description?: string) => Project;
@@ -321,6 +328,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     activeProject,
     syncStatus,
     isOnline,
+    projectCount: state.projects.length,
+    canCreateProject: state.projects.length < MAX_PROJECTS_PER_USER,
     createNewProject,
     updateProjectDetails,
     removeProject,
