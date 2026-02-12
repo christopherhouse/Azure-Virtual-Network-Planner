@@ -189,6 +189,29 @@ class CosmosDBService:
         """Check if Cosmos DB is configured."""
         return bool(self._endpoint)
 
+    async def check_health(self) -> bool:
+        """Check if Cosmos DB is healthy and accessible.
+
+        Performs a lightweight container.read() call to verify:
+        - Network connectivity
+        - Database and container exist
+        - Credentials are valid
+
+        Returns:
+            True if healthy, False otherwise
+        """
+        if not self.is_configured():
+            return False
+
+        try:
+            container = self._ensure_client()
+            # Read container metadata - ~1 RU, no document scan
+            container.read()
+            return True
+        except Exception as e:
+            logger.warning("Cosmos DB health check failed: %s", e)
+            return False
+
 
 # Singleton instance getter for dependency injection
 def get_cosmos_service() -> CosmosDBService:
