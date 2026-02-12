@@ -62,7 +62,7 @@ function generateUUID(): string {
       performance.now() * 1000) ||
     0;
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    let r = d > 0 ? (d + c.charCodeAt(0)) % 16 : (d2 + c.charCodeAt(0)) % 16;
+    const r = d > 0 ? (d + c.charCodeAt(0)) % 16 : (d2 + c.charCodeAt(0)) % 16;
     if (d > 0) {
       d = Math.floor(d / 16);
     } else {
