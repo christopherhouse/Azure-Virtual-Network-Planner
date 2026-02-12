@@ -5,6 +5,7 @@ import os
 import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, Response
@@ -14,7 +15,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from vnetplanner_api import __version__
 from vnetplanner_api.cosmos import get_cosmos_service
-from vnetplanner_api.routers import projects_router
+from vnetplanner_api.routers import projects_router, reference_router
 from vnetplanner_api.telemetry import configure_telemetry
 
 # Configure logging
@@ -25,12 +26,49 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _sync_reference_data_on_startup() -> None:
+    """Sync reference data to Cosmos DB if enabled via environment variable."""
+    if os.getenv("SYNC_REFERENCE_DATA_ON_STARTUP", "").lower() != "true":
+        return
+
+    from vnetplanner_api.cli.sync_reference import sync_reference_data
+
+    endpoint = os.getenv("COSMOS_ENDPOINT", "")
+    data_dir = Path(os.getenv("REFERENCE_DATA_DIR", "/app/data"))
+    database = os.getenv("COSMOS_DATABASE_NAME", "vnetplanner")
+    container = os.getenv("COSMOS_REFERENCE_CONTAINER_NAME", "reference")
+
+    if not endpoint:
+        logger.warning("SYNC_REFERENCE_DATA_ON_STARTUP enabled but COSMOS_ENDPOINT not set")
+        return
+
+    if not data_dir.exists():
+        logger.warning("Reference data directory not found: %s", data_dir)
+        return
+
+    logger.info("Syncing reference data from %s to Cosmos DB...", data_dir)
+    try:
+        result = sync_reference_data(
+            endpoint=endpoint,
+            data_dir=data_dir,
+            database_name=database,
+            container_name=container,
+        )
+        if result >= 0:
+            logger.info("Reference data sync completed: %d documents", result)
+        else:
+            logger.error("Reference data sync failed")
+    except Exception as e:
+        logger.error("Reference data sync error: %s", e)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan handler for startup and shutdown events."""
     # Startup
     logger.info("Starting VNet Planner API...")
     configure_telemetry()
+    _sync_reference_data_on_startup()
     yield
     # Shutdown
     logger.info("Shutting down VNet Planner API...")
@@ -56,6 +94,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(projects_router)
+app.include_router(reference_router)
 
 # Instrument FastAPI with OpenTelemetry
 FastAPIInstrumentor.instrument_app(app)

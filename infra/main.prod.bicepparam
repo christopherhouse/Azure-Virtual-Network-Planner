@@ -12,6 +12,10 @@ param peSubnetPrefix = '10.0.0.128/27'
 param enableVnetIntegration = true
 param internalOnly = true
 
+// Redis configuration
+param redisSku = 'Standard'
+param redisCapacity = 0 // C1 - 512MB
+
 param tags = {
   costCenter: 'production'
 }

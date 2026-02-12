@@ -105,6 +105,7 @@ compute_names() {
     UAMI_NAME="id-${RESOURCE_SUFFIX}"
     APP_INSIGHTS_NAME="appi-${RESOURCE_SUFFIX}"
     COSMOS_ACCOUNT_NAME="cosmos-${RESOURCE_SUFFIX}"
+    REDIS_CACHE_NAME="redis-${RESOURCE_SUFFIX}"
     ACR_LOGIN_SERVER="${ACR_NAME}.azurecr.io"
     CONTAINER_IMAGE="${ACR_LOGIN_SERVER}/${BASE_NAME}-api:${IMAGE_TAG}"
     
@@ -113,6 +114,7 @@ compute_names() {
     print_success "Identity:         $UAMI_NAME"
     print_success "App Insights:     $APP_INSIGHTS_NAME"
     print_success "Cosmos DB:        $COSMOS_ACCOUNT_NAME"
+    print_success "Redis Cache:      $REDIS_CACHE_NAME"
     print_success "Container Image:  $CONTAINER_IMAGE"
 }
 
@@ -163,6 +165,18 @@ fetch_resource_ids() {
         print_success "Cosmos DB endpoint: $COSMOS_ENDPOINT"
     else
         print_warning "Cosmos DB not found - API will not have database access"
+    fi
+
+    print_step "Getting Redis Cache hostname..."
+    REDIS_HOST=$(az redis show \
+        --name "$REDIS_CACHE_NAME" \
+        --resource-group "$RESOURCE_GROUP" \
+        --query "hostName" -o tsv 2>/dev/null || echo "")
+    
+    if [[ -n "$REDIS_HOST" ]]; then
+        print_success "Redis host: $REDIS_HOST"
+    else
+        print_warning "Redis Cache not found - API will not have caching"
     fi
 }
 
@@ -227,7 +241,16 @@ deploy_app() {
         env_vars_array+=("COSMOS_ENDPOINT=$COSMOS_ENDPOINT")
         env_vars_array+=("COSMOS_DATABASE_NAME=vnetplanner")
         env_vars_array+=("COSMOS_CONTAINER_NAME=projects")
+        env_vars_array+=("COSMOS_REFERENCE_CONTAINER_NAME=reference")
         env_vars_array+=("AZURE_CLIENT_ID=$UAMI_CLIENT_ID")
+        # Enable reference data sync on startup
+        env_vars_array+=("SYNC_REFERENCE_DATA_ON_STARTUP=true")
+        env_vars_array+=("REFERENCE_DATA_DIR=/app/data")
+    fi
+
+    # Add Redis configuration
+    if [[ -n "${REDIS_HOST:-}" ]]; then
+        env_vars_array+=("REDIS_HOST=$REDIS_HOST")
     fi
     
     if [[ "$APP_EXISTS" == "true" ]]; then

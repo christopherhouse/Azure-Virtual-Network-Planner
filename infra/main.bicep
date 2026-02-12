@@ -37,6 +37,17 @@ param internalOnly bool = true
 @description('Tags for all resources')
 param tags object = {}
 
+@description('Redis cache SKU (Standard minimum for private endpoints)')
+@allowed([
+  'Basic'
+  'Standard'
+  'Premium'
+])
+param redisSku string = 'Standard'
+
+@description('Redis cache capacity (size)')
+param redisCapacity int = 0
+
 // Computed names based on environment
 var resourceSuffix = '${baseName}-${environment}'
 var acrName = replace('acr${baseName}${environment}', '-', '')
@@ -50,6 +61,7 @@ var nsgAcaName = 'nsg-aca-${resourceSuffix}'
 var nsgPeName = 'nsg-pe-${resourceSuffix}'
 var wafPolicyName = replace('wafpol${resourceSuffix}', '-', '')
 var cosmosAccountName = 'cosmos-${resourceSuffix}'
+var redisName = 'redis-${resourceSuffix}'
 
 // Merge default tags with provided tags
 var defaultTags = {
@@ -196,6 +208,17 @@ module cosmosDnsZone 'modules/private-dns-zone.bicep' = {
   }
 }
 
+// Deploy Private DNS Zone for Redis
+module redisDnsZone 'modules/private-dns-zone.bicep' = {
+  name: 'redisdns-${deployment().name}'
+  params: {
+    zoneName: 'privatelink.redis.cache.windows.net'
+    vnetId: vnet.outputs.id
+    vnetName: vnet.outputs.name
+    tags: allTags
+  }
+}
+
 // Deploy Cosmos DB with Private Endpoint and RBAC
 module cosmosDb 'modules/cosmos-db.bicep' = {
   name: 'cosmos-${deployment().name}'
@@ -205,6 +228,22 @@ module cosmosDb 'modules/cosmos-db.bicep' = {
     privateEndpointSubnetId: vnet.outputs.peSubnetId
     privateDnsZoneId: cosmosDnsZone.outputs.id
     principalId: userAssignedIdentity.outputs.principalId
+    tags: allTags
+  }
+}
+
+// Deploy Azure Cache for Redis with Private Endpoint and Microsoft Entra ID auth
+module redis 'modules/redis.bicep' = {
+  name: 'redis-${deployment().name}'
+  params: {
+    location: location
+    redisName: redisName
+    redisSku: redisSku
+    redisCapacity: redisCapacity
+    privateEndpointSubnetId: vnet.outputs.peSubnetId
+    privateDnsZoneId: redisDnsZone.outputs.id
+    principalId: userAssignedIdentity.outputs.principalId
+    principalName: userAssignedIdentity.outputs.name
     tags: allTags
   }
 }
@@ -292,3 +331,15 @@ output cosmosDatabaseName string = cosmosDb.outputs.databaseName
 
 @description('Cosmos DB container name')
 output cosmosContainerName string = cosmosDb.outputs.containerName
+
+@description('Cosmos DB reference container name')
+output cosmosReferenceContainerName string = cosmosDb.outputs.referenceContainerName
+
+@description('Redis cache name')
+output redisName string = redis.outputs.name
+
+@description('Redis cache hostname')
+output redisHostName string = redis.outputs.hostName
+
+@description('Redis cache SSL port')
+output redisSslPort int = redis.outputs.sslPort

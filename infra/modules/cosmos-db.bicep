@@ -13,8 +13,14 @@ param databaseName string = 'vnetplanner'
 @description('Container name for projects')
 param containerName string = 'projects'
 
-@description('Partition key path')
+@description('Partition key path for projects container')
 param partitionKeyPath string = '/userId'
+
+@description('Container name for reference data')
+param referenceContainerName string = 'reference'
+
+@description('Partition key path for reference container')
+param referencePartitionKeyPath string = '/type'
 
 @description('Enable public network access')
 param publicNetworkAccess string = 'Disabled'
@@ -114,6 +120,39 @@ resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/container
   }
 }
 
+// Reference data container with type partition key
+resource referenceContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-11-15' = {
+  parent: database
+  name: referenceContainerName
+  properties: {
+    resource: {
+      id: referenceContainerName
+      partitionKey: {
+        paths: [
+          referencePartitionKeyPath
+        ]
+        kind: 'Hash'
+        version: 2
+      }
+      indexingPolicy: {
+        indexingMode: 'consistent'
+        automatic: true
+        includedPaths: [
+          {
+            path: '/*'
+          }
+        ]
+        excludedPaths: [
+          {
+            path: '/_etag/?'
+          }
+        ]
+      }
+      // No TTL - reference data is managed via sync script
+    }
+  }
+}
+
 // RBAC Role Assignment - Grant managed identity data contributor access
 resource sqlRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-11-15' = {
   parent: cosmosAccount
@@ -179,6 +218,9 @@ output databaseName string = database.name
 
 @description('Container name')
 output containerName string = container.name
+
+@description('Reference container name')
+output referenceContainerName string = referenceContainer.name
 
 @description('Private endpoint ID')
 output privateEndpointId string = cosmosPrivateEndpoint.id
