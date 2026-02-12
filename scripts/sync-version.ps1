@@ -69,23 +69,41 @@ if (Test-Path $PackageJson) {
     Write-Host "  [SKIP] package.json not found" -ForegroundColor Yellow
 }
 
-# Check/update pyproject.toml
+# Check/update pyproject.toml (only [project] section version, not tool configs)
 if (Test-Path $PyProjectToml) {
-    $TomlContent = Get-Content $PyProjectToml -Raw
-    if ($TomlContent -match 'version\s*=\s*"([^"]+)"') {
-        $CurrentVersion = $Matches[1]
+    $TomlLines = Get-Content $PyProjectToml
+    $InProjectSection = $false
+    $CurrentVersion = $null
+    $VersionLineIndex = -1
+
+    for ($i = 0; $i -lt $TomlLines.Count; $i++) {
+        $line = $TomlLines[$i]
+        if ($line -match '^\[project\]') {
+            $InProjectSection = $true
+        } elseif ($line -match '^\[' -and $InProjectSection) {
+            $InProjectSection = $false
+        } elseif ($InProjectSection -and $line -match '^version\s*=\s*"([^"]+)"') {
+            $CurrentVersion = $Matches[1]
+            $VersionLineIndex = $i
+            break
+        }
+    }
+
+    if ($CurrentVersion) {
         if ($CurrentVersion -ne $Version) {
             $AllInSync = $false
             if ($Check) {
                 Write-Host "  [MISMATCH] pyproject.toml: $CurrentVersion (expected $Version)" -ForegroundColor Red
             } else {
-                $NewContent = $TomlContent -replace 'version\s*=\s*"[^"]+"', "version = `"$Version`""
-                Set-Content $PyProjectToml $NewContent -NoNewline
+                $TomlLines[$VersionLineIndex] = "version = `"$Version`""
+                Set-Content $PyProjectToml ($TomlLines -join "`n") -NoNewline
                 Write-Host "  [UPDATED] pyproject.toml: $CurrentVersion -> $Version" -ForegroundColor Green
             }
         } else {
             Write-Host "  [OK] pyproject.toml: $CurrentVersion" -ForegroundColor Green
         }
+    } else {
+        Write-Host "  [SKIP] pyproject.toml version not found in [project] section" -ForegroundColor Yellow
     }
 } else {
     Write-Host "  [SKIP] pyproject.toml not found" -ForegroundColor Yellow

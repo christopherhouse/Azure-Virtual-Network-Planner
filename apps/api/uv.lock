@@ -1182,7 +1182,7 @@ wheels = [
 
 [[package]]
 name = "vnetplanner-api"
-version = "0.5.2"
+version = "0.5.4"
 source = { editable = "." }
 dependencies = [
     { name = "azure-core-tracing-opentelemetry" },

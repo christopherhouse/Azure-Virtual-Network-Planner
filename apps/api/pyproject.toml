@@ -31,7 +31,7 @@ dev = [
 api = "vnetplanner_api.main:run"
 
 [tool.ruff]
-target-version = "0.5.4"
+target-version = "py312"
 line-length = 100
 src = ["src", "tests"]
 
