@@ -7,6 +7,7 @@ on:
     paths:
       - 'apps/web/**'
       - 'apps/api/**'
+      - 'infra/**'
       - '.github/workflows/test.yml'
   pull_request:
     branches:
@@ -14,6 +15,7 @@ on:
     paths:
       - 'apps/web/**'
       - 'apps/api/**'
+      - 'infra/**'
   workflow_dispatch:
 
 concurrency:
@@ -251,12 +253,38 @@ jobs:
           fail-on-error: true
 
   # ===========================================================================
+  # Infrastructure: Bicep Validation
+  # ===========================================================================
+  validate-infra:
+    name: Infra - Bicep Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Azure CLI
+        uses: azure/setup-azure-cli@v1
+
+      - name: Install Bicep CLI
+        run: az bicep install
+
+      - name: Validate Bicep templates
+        working-directory: ./infra
+        run: |
+          echo "Building main.bicep..."
+          az bicep build --file main.bicep
+          echo "Building front-door-deployment.bicep..."
+          az bicep build --file front-door-deployment.bicep
+          echo "✅ All Bicep templates validated successfully"
+
+  # ===========================================================================
   # Quality Gate Summary
   # ===========================================================================
   quality-gate:
     name: Quality Gate
     runs-on: ubuntu-latest
-    needs: [lint-web, test-web, build-web, lint-api, test-api]
+    needs: [lint-web, test-web, build-web, lint-api, test-api, validate-infra]
     if: always()
     
     steps:
@@ -300,6 +328,15 @@ jobs:
           fi
           
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Infrastructure (Bicep)" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.validate-infra.result }}" == "success" ]; then
+            echo "✅ **Bicep Validation**: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Bicep Validation**: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
@@ -309,7 +346,8 @@ jobs:
           needs.test-web.result != 'success' ||
           needs.build-web.result != 'success' ||
           needs.lint-api.result != 'success' ||
-          needs.test-api.result != 'success'
+          needs.test-api.result != 'success' ||
+          needs.validate-infra.result != 'success'
         run: |
           echo "❌ Quality gate failed - one or more checks did not pass"
           exit 1
@@ -320,6 +358,7 @@ jobs:
           needs.test-web.result == 'success' &&
           needs.build-web.result == 'success' &&
           needs.lint-api.result == 'success' &&
-          needs.test-api.result == 'success'
+          needs.test-api.result == 'success' &&
+          needs.validate-infra.result == 'success'
         run: |
           echo "✅ All quality checks passed!"
